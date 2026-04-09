@@ -2,66 +2,98 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="screen-orientation" content="landscape" />
   <title>EMBERHOLD</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     html, body {
-      width: 100%;
-      height: 100%;
+      width: 100%; height: 100%;
       background: #0a0608;
       overflow: hidden;
       touch-action: none;
-      -webkit-user-select: none;
-      user-select: none;
+      -webkit-user-select: none; user-select: none;
     }
 
     #game-container {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
     }
 
     canvas {
       display: block;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
+      max-width: 100%;
+      max-height: 100%;
     }
 
-    /* Loading fallback */
     #loading-text {
-      position: fixed;
-      top: 50%;
-      left: 50%;
+      position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      color: #ff6b35;
-      font-family: monospace;
-      font-size: 18px;
-      letter-spacing: 4px;
+      color: #ff6b35; font-family: monospace;
+      font-size: 16px; letter-spacing: 4px;
       text-transform: uppercase;
       animation: pulse 1.5s ease-in-out infinite;
+      white-space: nowrap;
+    }
+    @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+    /* Rotate overlay — shows in portrait mode */
+    #rotate-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 9999;
+      background: #0a0608;
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px;
+    }
+    #rotate-overlay svg {
+      animation: spin 2s ease-in-out infinite alternate;
+    }
+    @keyframes spin {
+      from { transform: rotate(-20deg); }
+      to   { transform: rotate(20deg); }
+    }
+    #rotate-overlay p {
+      color: #ff6b35; font-family: monospace;
+      font-size: 14px; letter-spacing: 3px;
+      text-transform: uppercase; text-align: center;
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 0.4; }
-      50% { opacity: 1; }
+    @media (orientation: portrait) {
+      #rotate-overlay { display: flex; }
     }
   </style>
 </head>
 <body>
+
+  <!-- Rotate prompt (portrait only) -->
+  <div id="rotate-overlay">
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+      <rect x="16" y="8" width="32" height="48" rx="4" stroke="#ff6b35" stroke-width="2" fill="none"/>
+      <rect x="20" y="12" width="24" height="36" fill="#1a0d1f" rx="2"/>
+      <path d="M44 28 L52 20 L44 12" stroke="#ff6b35" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M52 20 L20 20" stroke="#ff6b35" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <p>Rotate to Landscape<br/>to play EMBERHOLD</p>
+  </div>
+
   <div id="game-container">
     <div id="loading-text">Kindling the ember...</div>
   </div>
+
   <script type="module" src="/src/main.ts"></script>
+
+  <script>
+    // Try to lock orientation to landscape
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+  </script>
 </body>
 </html>

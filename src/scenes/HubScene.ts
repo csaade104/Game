@@ -1,29 +1,18 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, TILE_W, TILE_H, TILE_HALF_W, TILE_HALF_H, HUB_COLS, HUB_ROWS, DEPTH, CAM_LERP } from '../config';
-import { gridToScreen, worldToScreen, depthOf } from '../utils/IsoMath';
+import { gridToScreen, depthOf } from '../utils/IsoMath';
 import { PALETTE } from '../utils/ColorPalette';
 import { Player } from '../entities/Player';
 import { InputManager } from '../systems/InputManager';
-import { pulse } from '../utils/Easing';
 
-// Tile IDs
-const T = {
-  VOID:   0,
-  COBBLE: 1,
-  PATH:   2,
-  DIRT:   3,
-  WALL:   4,
-  EMBER:  5,
-  WATER:  6,
-} as const;
+const T = { VOID:0, COBBLE:1, PATH:2, DIRT:3, WALL:4, EMBER:5, WATER:6 } as const;
 
-// 30x30 hub town layout (row-major, [row][col])
 // prettier-ignore
-const MAP_DATA: number[][] = [
+const MAP: number[][] = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0],
-  [0,0,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,0,0],
+  [0,0,3,1,1,1,1,1,1,1,1,1,1,1,2,2,2,1,1,1,1,1,1,1,1,1,1,3,0,0],
   [0,0,3,1,4,4,4,4,1,1,1,1,1,1,2,2,2,1,1,1,1,4,4,4,4,1,1,3,0,0],
   [0,0,3,1,4,1,1,4,1,1,1,1,1,1,2,2,2,1,1,1,1,4,1,1,4,1,1,3,0,0],
   [0,0,3,1,4,1,1,4,1,1,1,1,1,1,2,2,2,1,1,1,1,4,1,1,4,1,1,3,0,0],
@@ -52,148 +41,121 @@ const MAP_DATA: number[][] = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
 ];
 
-interface NPCDef {
-  key: string;
-  name: string;
-  col: number;
-  row: number;
-  greeting: string;
-}
-
-const NPC_DEFS: NPCDef[] = [
-  { key: 'npc_baelor',  name: 'Baelor',  col: 6,  row: 5,  greeting: 'The forge never sleeps, wanderer. Neither do I.' },
-  { key: 'npc_elara',   name: 'Elara',   col: 23, row: 5,  greeting: 'I have been studying the flame for thirty years. It is afraid.' },
-  { key: 'npc_mira',    name: 'Mira',    col: 6,  row: 13, greeting: "Drink's on the house tonight. God knows we need something to celebrate." },
-  { key: 'npc_orin',    name: 'Orin',    col: 23, row: 13, greeting: 'Time is a circle. We have been here before. We will be here again.' },
-  { key: 'npc_theo',    name: 'Theo',    col: 6,  row: 19, greeting: 'A fine cloak makes a fine wanderer. Or so I tell myself.' },
-  { key: 'npc_vesna',   name: 'Vesna',   col: 23, row: 19, greeting: "I grow herbs in the dark now. They come out... different. But useful." },
-  { key: 'npc_cael',    name: 'Cael',    col: 15, row: 25, greeting: 'The ember asks only that you believe in it. Do you?' },
-  { key: 'npc_joren',   name: 'Joren',   col: 15, row: 3,  greeting: 'The wall holds. For now. Get below and make sure it stays that way.' },
+interface NPCDef { key:string; name:string; col:number; row:number; greeting:string; }
+const NPCS: NPCDef[] = [
+  { key:'npc_baelor', name:'Baelor the Forger',  col:6,  row:5,  greeting:'"I forged this for my daughter. She went into the dark and never came back. The blade remembers her hand — it will learn yours."' },
+  { key:'npc_elara',  name:'Elara the Scholar',  col:23, row:5,  greeting:'"The ember is not dying. It is being drained. Something below feeds on it. Find it. Stop it. That is your charge."' },
+  { key:'npc_mira',   name:'Mira of the Lamp',   col:6,  row:13, greeting:'"I have kept this tavern open through two wars and a plague. I will keep it open through this too. Drink. You look pale."' },
+  { key:'npc_orin',   name:'Orin the Timekeeper',col:23, row:13, greeting:'"Time is a circle, wanderer. We have been here before. We will be here again. The question is whether we survive the loop."' },
+  { key:'npc_theo',   name:'Theo the Tailor',    col:6,  row:19, greeting:'"A fine cloak on a wanderer is not vanity. It is armor for the soul. Let the dark see you and know you are not afraid."' },
+  { key:'npc_vesna',  name:'Vesna the Herbalist', col:23, row:19, greeting:'"My herbs grow strange in the dark now. But strange is not useless. The draught I make from them burns like ember-fire in the blood."' },
+  { key:'npc_cael',   name:'Brother Cael',        col:15, row:25, greeting:'"The Flame asks only one thing: do not let it go out. Everything else — your life, your fear, your past — is secondary."' },
+  { key:'npc_joren',  name:'Captain Joren',       col:15, row:3,  greeting:'"The wall holds. The gate holds. But for how long? Every night the dark presses closer. Go below. Find the source. End this."' },
 ];
 
 export class HubScene extends Phaser.Scene {
   private player!: Player;
   private inputMgr!: InputManager;
   private groundRT!: Phaser.GameObjects.RenderTexture;
-  private entityLayer!: Phaser.GameObjects.Container;
-  private npcSprites: Array<{ sprite: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; data: NPCDef }> = [];
+  private npcSprites: Array<{ sprite: Phaser.GameObjects.Image; data: NPCDef }> = [];
   private portalGlow!: Phaser.GameObjects.Image;
   private portalTime = 0;
-  private dialogueBanner!: Phaser.GameObjects.Container;
-  private dialogueBannerText!: Phaser.GameObjects.Text;
-  private dialogueSpeaker!: Phaser.GameObjects.Text;
-  private bannerNPC: NPCDef | null = null;
+  private mapW = 0; private mapH = 0;
+  private mapOX = 0; private mapOY = 0;
+  // Dialogue banner
+  private banner!: Phaser.GameObjects.Container;
+  private bannerText!: Phaser.GameObjects.Text;
+  private bannerSpeaker!: Phaser.GameObjects.Text;
+  private nearNPC: NPCDef | null = null;
   private bannerTimer = 0;
-  private emberParticles!: Phaser.GameObjects.Particles.ParticleEmitter;
-  private fogLayer!: Phaser.GameObjects.Graphics;
-  private mapOriginX = 0;
-  private mapOriginY = 0;
-  private dayNightAlpha = 0;  // 0 = full night, 1 = full day
+  // Intro
+  private introActive = true;
+  private introContainer!: Phaser.GameObjects.Container;
+  // Joystick
+  private joyBase!: Phaser.GameObjects.Image;
+  private joyThumb!: Phaser.GameObjects.Image;
+  private joyBaseX = 60; private joyBaseY = 0;
+  private joyPointerID = -1;
+  private atkBtn!: Phaser.GameObjects.Image;
+  private itrBtn!: Phaser.GameObjects.Image;
 
   constructor() { super('HubScene'); }
 
   create() {
-    // Map pixel origin — center the map on screen
-    // In isometric, top of map is at (0,0) in world, bottom at (ROWS+COLS)*TILE_HALF_H
-    const mapW = (HUB_COLS + HUB_ROWS) * TILE_HALF_W;
-    const mapH = (HUB_COLS + HUB_ROWS) * TILE_HALF_H;
-    this.mapOriginX = -mapW / 2;
-    this.mapOriginY = -mapH / 4;
+    this.mapW = (HUB_COLS + HUB_ROWS) * TILE_HALF_W;
+    this.mapH = (HUB_COLS + HUB_ROWS) * TILE_HALF_H;
+    this.mapOX = -(this.mapW / 2) + TILE_HALF_W;
+    this.mapOY = -(this.mapH / 4);
+    this.joyBaseY = GAME_H - 60;
 
-    // Camera world bounds
     this.cameras.main.setBounds(
-      this.mapOriginX - GAME_W / 2,
-      this.mapOriginY - GAME_H / 2,
-      mapW + GAME_W,
-      mapH + GAME_H
+      this.mapOX - GAME_W / 2, this.mapOY - GAME_H / 2,
+      this.mapW + GAME_W, this.mapH + GAME_H
     );
+    this.cameras.main.setZoom(1.6);
 
-    // Build ground RenderTexture
     this.buildGround();
-
-    // Atmosphere
+    this.buildPortal();
+    this.buildNPCs();
     this.buildAtmosphere();
 
-    // Portal glow (center plaza)
-    this.buildPortal();
+    const startCol = 15, startRow = 17;
+    this.player = new Player(this, startCol, startRow);
+    this.player.setCollisionMap(MAP, HUB_COLS, HUB_ROWS);
+    this.syncPlayerPos();
 
-    // NPCs
-    this.buildNPCs();
-
-    // Player (start at path center near portal)
-    const playerStartCol = 15;
-    const playerStartRow = 17;
-    this.player = new Player(this, playerStartCol, playerStartRow);
-    this.player.setCollisionMap(MAP_DATA, HUB_COLS, HUB_ROWS);
-    this.adjustEntityToMap(this.player, playerStartCol, playerStartRow);
-
-    // Input
-    this.inputMgr = new InputManager(this);
-
-    // Dialogue banner (bottom)
-    this.buildDialogueBanner();
-
-    // Camera follow
     this.cameras.main.startFollow(this.player, true, CAM_LERP, CAM_LERP);
 
-    // Particles: ambient embers drifting up from plaza
-    const plazaScreen = gridToScreen(14, 12);
-    this.emberParticles = this.add.particles(
-      plazaScreen.x + this.mapOriginX,
-      plazaScreen.y + this.mapOriginY + 20,
-      'particle_ember',
-      {
-        speed: { min: 5, max: 18 },
-        angle: { min: 260, max: 280 },
-        lifespan: { min: 1500, max: 3500 },
-        scale: { start: 0.8, end: 0 },
-        alpha: { start: 0.7, end: 0 },
-        tint: [PALETTE.EMBER_BRIGHT, PALETTE.EMBER_MID, PALETTE.LANTERN],
-        frequency: 200,
-        quantity: 1,
-        blendMode: Phaser.BlendModes.ADD,
-      }
-    );
+    this.inputMgr = new InputManager(this);
+    this.buildJoystick();
+    this.buildDialogueBanner();
+    this.buildIntro();
 
-    // Notify UIScene
-    this.scene.get('UIScene')?.events?.emit('player-ready', this.player);
-
-    // Fade in
-    this.cameras.main.fadeIn(800, 0, 0, 0);
+    // Emit portal particles
+    const ps = this.isoToScene(14, 10);
+    this.add.particles(ps.x, ps.y, 'particle_ember', {
+      speed: { min: 8, max: 22 }, angle: { min: 255, max: 285 },
+      lifespan: { min: 1200, max: 3000 }, scale: { start: 1, end: 0 },
+      alpha: { start: 0.8, end: 0 }, frequency: 150, quantity: 1,
+      tint: [PALETTE.EMBER_BRIGHT, PALETTE.EMBER_MID, PALETTE.LANTERN],
+      blendMode: Phaser.BlendModes.ADD,
+    });
   }
 
+  // ── Coordinate helper ──────────────────────────────────────────────────────
+  private isoToScene(col: number, row: number) {
+    const s = gridToScreen(col, row);
+    return { x: s.x + this.mapOX, y: s.y + this.mapOY };
+  }
+
+  private syncPlayerPos() {
+    const s = this.isoToScene(this.player.worldX, this.player.worldY);
+    this.player.x = s.x;
+    this.player.y = s.y - 14;
+    this.player.setDepth(depthOf(this.player.worldX, this.player.worldY) + 50);
+  }
+
+  // ── Ground ─────────────────────────────────────────────────────────────────
   private buildGround() {
-    const rtW = (HUB_COLS + HUB_ROWS) * TILE_HALF_W + TILE_W;
-    const rtH = (HUB_COLS + HUB_ROWS) * TILE_HALF_H + TILE_H + 8;
-
-    this.groundRT = this.add.renderTexture(
-      this.mapOriginX,
-      this.mapOriginY,
-      rtW, rtH
-    ).setOrigin(0, 0).setDepth(DEPTH.GROUND);
-
-    // Temp graphics for drawing tiles
-    const g = this.add.graphics();
+    const rtW = this.mapW + TILE_W * 2;
+    const rtH = this.mapH + TILE_H * 4;
+    this.groundRT = this.add.renderTexture(this.mapOX - TILE_W, this.mapOY, rtW, rtH)
+      .setOrigin(0, 0).setDepth(DEPTH.GROUND);
 
     for (let row = 0; row < HUB_ROWS; row++) {
       for (let col = 0; col < HUB_COLS; col++) {
-        const tileId = MAP_DATA[row]?.[col] ?? 0;
-        if (tileId === T.VOID) continue;
-
-        const key = this.tileKey(tileId);
-        const screen = gridToScreen(col, row);
-        const tx = screen.x + rtW / 2 - TILE_HALF_W;
-        const ty = screen.y;
-
-        this.groundRT.draw(key, tx, ty);
+        const id = MAP[row]?.[col] ?? 0;
+        if (id === T.VOID) continue;
+        const s = gridToScreen(col, row);
+        const tx = s.x + TILE_W;
+        const ty = s.y;
+        this.groundRT.draw(this.tileKey(id), tx, ty);
       }
     }
-
-    g.destroy();
   }
 
   private tileKey(id: number): string {
-    switch (id) {
+    switch(id) {
       case T.COBBLE: return 'tile_cobble';
       case T.PATH:   return 'tile_path';
       case T.DIRT:   return 'tile_dirt';
@@ -204,234 +166,277 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  private buildAtmosphere() {
-    // Fog/vignette overlay
-    this.fogLayer = this.add.graphics();
-    this.fogLayer.setScrollFactor(0).setDepth(DEPTH.OVERLAY - 10);
-
-    // Gradient vignette
-    const steps = 10;
-    for (let i = 0; i < steps; i++) {
-      const alpha = (i / steps) * 0.35;
-      const margin = i * 6;
-      this.fogLayer.fillStyle(0x0a0608, alpha);
-      this.fogLayer.fillRect(0, 0, GAME_W, margin);
-      this.fogLayer.fillRect(0, GAME_H - margin, GAME_W, margin);
-      this.fogLayer.fillRect(0, 0, margin, GAME_H);
-      this.fogLayer.fillRect(GAME_W - margin, 0, margin, GAME_H);
-    }
-
-    // Dusk tint overlay (starts dark, lightens to day)
-    const nightOverlay = this.add.graphics();
-    nightOverlay.fillStyle(0x0d0a1a, 0.45);
-    nightOverlay.fillRect(0, 0, GAME_W, GAME_H);
-    nightOverlay.setScrollFactor(0).setDepth(DEPTH.OVERLAY - 5).setAlpha(0.6);
-    // Slowly fade the night overlay
-    this.tweens.add({
-      targets: nightOverlay,
-      alpha: 0.2,
-      duration: 12000,
-      ease: 'Sine.InOut',
-      yoyo: true,
-      repeat: -1,
-    });
-  }
-
+  // ── Portal ─────────────────────────────────────────────────────────────────
   private buildPortal() {
-    const portalCol = 14;
-    const portalRow = 12;
-    const screen = gridToScreen(portalCol, portalRow);
-    const px = screen.x + this.mapOriginX + (HUB_COLS + HUB_ROWS) * TILE_HALF_W / 2 - TILE_HALF_W;
-    const py = screen.y + this.mapOriginY;
+    const p = this.isoToScene(14, 11);
+    // Glow ring on ground
+    const ring = this.add.graphics();
+    ring.fillStyle(PALETTE.EMBER_MID, 0.08);
+    ring.fillEllipse(p.x, p.y + 8, 80, 40);
+    ring.setDepth(DEPTH.GROUND + 1);
 
-    // Outer glow ring
-    const outerGlow = this.add.graphics();
-    outerGlow.fillStyle(PALETTE.EMBER_MID, 0.06);
-    outerGlow.fillEllipse(px, py, 90, 45);
-    outerGlow.setDepth(DEPTH.GROUND + 1);
-
-    // Portal pillar pieces
+    // Two side pillars
     for (let i = 0; i < 2; i++) {
-      const pillar = this.add.image(px + (i === 0 ? -18 : 18), py - 20, 'prop_portal_piece')
-        .setDepth(DEPTH.ENTITY_BASE + py)
-        .setScale(0.7);
-      this.tweens.add({
-        targets: pillar,
-        y: py - 24,
-        duration: 2000 + i * 300,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.InOut',
-      });
+      const pillar = this.add.image(p.x + (i === 0 ? -20 : 20), p.y - 18, 'prop_portal_piece')
+        .setDepth(p.y + 10 + i).setScale(0.75);
+      this.tweens.add({ targets: pillar, y: p.y - 22, duration: 2200 + i*400, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
 
-    // Center column of ember light
-    this.portalGlow = this.add.image(px, py - 30, 'light_radial')
-      .setDepth(DEPTH.ENTITY_BASE + py)
+    // Central light column
+    this.portalGlow = this.add.image(p.x, p.y - 26, 'light_radial')
+      .setDepth(p.y + 20)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(0.6)
+      .setScale(0.55)
       .setTint(PALETTE.EMBER_MID);
   }
 
+  // ── NPCs ───────────────────────────────────────────────────────────────────
   private buildNPCs() {
-    for (const def of NPC_DEFS) {
-      const screen = gridToScreen(def.col, def.row);
-      const sx = screen.x + this.mapOriginX + (HUB_COLS + HUB_ROWS) * TILE_HALF_W / 2 - TILE_HALF_W;
-      const sy = screen.y + this.mapOriginY;
+    for (const def of NPCS) {
+      const s = this.isoToScene(def.col, def.row);
+      const sprite = this.add.image(s.x, s.y - 12, def.key, 0)
+        .setScale(1.4).setDepth(depthOf(def.col, def.row) + 20);
 
-      const sprite = this.add.image(sx, sy - 10, def.key, 0)
-        .setDepth(depthOf(def.col, def.row) + 20)
-        .setScale(1.2);
+      // Idle bob
+      this.tweens.add({ targets: sprite, y: s.y - 16, duration: 1600 + Math.random()*500, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      // Walk cycle
+      this.time.addEvent({ delay: 850 + Math.random()*300, loop: true, callback: () => {
+        sprite.setFrame(Number(sprite.frame.name) === 0 ? 1 : 0);
+      }});
 
       // Name label
-      const label = this.add.text(sx, sy - 26, def.name, {
-        fontFamily: 'monospace',
-        fontSize: '5px',
-        color: '#e8d5b0',
-        backgroundColor: '#110b0f',
-        padding: { x: 2, y: 1 },
-      }).setOrigin(0.5).setDepth(depthOf(def.col, def.row) + 21).setAlpha(0.7);
+      this.add.text(s.x, s.y - 28, def.name, {
+        fontFamily: 'monospace', fontSize: '5px', color: '#d0b898',
+        backgroundColor: '#0a0608cc', padding: { x: 3, y: 1 },
+      }).setOrigin(0.5).setDepth(depthOf(def.col, def.row) + 21);
 
-      // Idle bob tween
-      this.tweens.add({
-        targets: sprite,
-        y: sy - 13,
-        duration: 1800 + Math.random() * 400,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.InOut',
-      });
-
-      // Walk cycle (swap frame)
-      this.time.addEvent({
-        delay: 900 + Math.random() * 300,
-        callback: () => {
-          sprite.setFrame(sprite.frame.name === '0' ? 1 : 0);
-        },
-        loop: true,
-      });
-
-      this.npcSprites.push({ sprite, label, data: def });
+      this.npcSprites.push({ sprite, data: def });
     }
   }
 
+  // ── Atmosphere ─────────────────────────────────────────────────────────────
+  private buildAtmosphere() {
+    // Night overlay
+    const night = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.OVERLAY - 5);
+    night.fillStyle(0x0d0a1a, 1);
+    night.fillRect(0, 0, GAME_W, GAME_H);
+    this.tweens.add({ targets: night, alpha: 0.25, duration: 10000, ease: 'Sine.InOut', yoyo: true, repeat: -1 });
+
+    // Vignette edges
+    const vig = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.OVERLAY - 4);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * 0.4, m = i * 7;
+      vig.fillStyle(0x060408, a);
+      vig.fillRect(0, 0, GAME_W, m);
+      vig.fillRect(0, GAME_H - m, GAME_W, m);
+      vig.fillRect(0, 0, m, GAME_H);
+      vig.fillRect(GAME_W - m, 0, m, GAME_H);
+    }
+  }
+
+  // ── Dialogue banner ────────────────────────────────────────────────────────
   private buildDialogueBanner() {
-    this.dialogueBanner = this.add.container(GAME_W / 2, GAME_H - 45);
-    this.dialogueBanner.setScrollFactor(0).setDepth(DEPTH.DIALOGUE).setAlpha(0);
+    this.banner = this.add.container(GAME_W / 2, GAME_H - 38).setScrollFactor(0).setDepth(DEPTH.DIALOGUE).setAlpha(0);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x110b0f, 0.92);
-    bg.fillRect(-140, -22, 280, 44);
-    bg.lineStyle(1.5, PALETTE.EMBER_MID, 0.8);
-    bg.strokeRect(-140, -22, 280, 44);
-    bg.lineStyle(1, PALETTE.STONE_DARK, 0.5);
-    bg.strokeRect(-138, -20, 276, 40);
-    this.dialogueBanner.add(bg);
+    bg.fillStyle(0x080508, 0.92); bg.fillRoundedRect(-148, -26, 296, 52, 4);
+    bg.lineStyle(1.5, PALETTE.EMBER_MID, 0.8); bg.strokeRoundedRect(-148, -26, 296, 52, 4);
+    bg.lineStyle(1, PALETTE.STONE_DARK, 0.4); bg.strokeRoundedRect(-146, -24, 292, 48, 3);
+    this.banner.add(bg);
 
-    this.dialogueSpeaker = this.add.text(-130, -16, '', {
-      fontFamily: 'monospace',
-      fontSize: '6px',
-      color: '#ff6b35',
-      letterSpacing: 1,
+    this.bannerSpeaker = this.add.text(-136, -20, '', {
+      fontFamily: 'monospace', fontSize: '6px', color: '#ff6b35', letterSpacing: 1,
     });
-    this.dialogueBanner.add(this.dialogueSpeaker);
+    this.banner.add(this.bannerSpeaker);
 
-    this.dialogueBannerText = this.add.text(-130, -5, '', {
-      fontFamily: 'monospace',
-      fontSize: '6px',
-      color: '#e8d5b0',
-      wordWrap: { width: 260 },
-      lineSpacing: 2,
+    this.bannerText = this.add.text(-136, -8, '', {
+      fontFamily: 'monospace', fontSize: '6px', color: '#e8d5b0',
+      wordWrap: { width: 272 }, lineSpacing: 2,
     });
-    this.dialogueBanner.add(this.dialogueBannerText);
+    this.banner.add(this.bannerText);
 
-    const pressHint = this.add.text(110, 14, '[E] Talk', {
-      fontFamily: 'monospace',
-      fontSize: '5px',
-      color: '#5a4a3a',
+    const hint = this.add.text(118, 20, '[E] Talk', {
+      fontFamily: 'monospace', fontSize: '5px', color: '#5a4030',
     });
-    this.dialogueBanner.add(pressHint);
+    this.banner.add(hint);
   }
 
-  private adjustEntityToMap(entity: { x: number; y: number; setDepth: (d: number) => void }, col: number, row: number) {
-    const screen = gridToScreen(col, row);
-    const rtW = (HUB_COLS + HUB_ROWS) * TILE_HALF_W;
-    entity.x = screen.x + this.mapOriginX + rtW / 2 - TILE_HALF_W;
-    entity.y = screen.y + this.mapOriginY - 10;
-    entity.setDepth(depthOf(col, row) + 50);
+  private showBanner(npc: NPCDef) {
+    this.nearNPC = npc; this.bannerTimer = 5000;
+    this.bannerSpeaker.setText(npc.name.toUpperCase());
+    this.bannerText.setText(npc.greeting);
+    this.tweens.killTweensOf(this.banner);
+    this.tweens.add({ targets: this.banner, alpha: 1, duration: 180, ease: 'Sine.Out' });
   }
 
-  private showDialogue(npc: NPCDef) {
-    this.bannerNPC = npc;
-    this.bannerTimer = 4000;
-    this.dialogueSpeaker.setText(npc.name.toUpperCase());
-    this.dialogueBannerText.setText(npc.greeting);
-    this.tweens.add({
-      targets: this.dialogueBanner,
-      alpha: 1,
-      duration: 200,
-      ease: 'Sine.Out',
+  private hideBanner() {
+    this.nearNPC = null;
+    this.tweens.killTweensOf(this.banner);
+    this.tweens.add({ targets: this.banner, alpha: 0, duration: 250 });
+  }
+
+  // ── Intro cutscene ────────────────────────────────────────────────────────
+  private buildIntro() {
+    this.introContainer = this.add.container(0, 0).setScrollFactor(0).setDepth(DEPTH.DIALOGUE + 50);
+
+    const overlay = this.add.graphics();
+    overlay.fillStyle(0x000000, 1);
+    overlay.fillRect(0, 0, GAME_W, GAME_H);
+    this.introContainer.add(overlay);
+
+    const lines = [
+      'The ember fades.',
+      'Emberhold — last city of men — faces the dark.',
+      '',
+      'You are Kaelen.',
+      'Wanderer. Fighter. Heir to the Keeper\'s line.',
+      '',
+      'Scholar Elara has called you home.',
+      'The Flame needs a champion.',
+      'Descend. Rekindle it. Before everything ends.',
+    ];
+
+    const textObj = this.add.text(GAME_W / 2, GAME_H / 2 - 20, '', {
+      fontFamily: 'monospace', fontSize: '7px', color: '#e8d5b0',
+      align: 'center', wordWrap: { width: GAME_W - 60 }, lineSpacing: 4,
+    }).setOrigin(0.5);
+    this.introContainer.add(textObj);
+
+    const skipText = this.add.text(GAME_W / 2, GAME_H - 24, 'TAP TO CONTINUE', {
+      fontFamily: 'monospace', fontSize: '6px', color: '#ff6b35', alpha: 0,
+    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5);
+    this.introContainer.add(skipText);
+
+    // Typewriter reveal
+    let fullText = lines.join('\n');
+    let shown = 0;
+    const ticker = this.time.addEvent({
+      delay: 35, loop: true, callback: () => {
+        shown = Math.min(shown + 1, fullText.length);
+        textObj.setText(fullText.substring(0, shown));
+        if (shown >= fullText.length) {
+          ticker.remove();
+          this.tweens.add({ targets: skipText, alpha: 1, duration: 500 });
+          this.tweens.add({ targets: skipText, alpha: 0.3, duration: 800, yoyo: true, repeat: -1 });
+        }
+      },
+    });
+
+    // Tap/click to dismiss
+    const dismiss = () => {
+      ticker.remove();
+      this.introActive = false;
+      this.tweens.add({
+        targets: this.introContainer, alpha: 0, duration: 600,
+        onComplete: () => this.introContainer.destroy(),
+      });
+    };
+
+    this.input.once('pointerdown', dismiss);
+    this.input.keyboard?.once('keydown', dismiss);
+  }
+
+  // ── Inline joystick ────────────────────────────────────────────────────────
+  private buildJoystick() {
+    const JX = this.joyBaseX, JY = this.joyBaseY;
+
+    this.joyBase = this.add.image(JX, JY, 'joystick_base')
+      .setScrollFactor(0).setDepth(2000).setAlpha(0.75);
+    this.joyThumb = this.add.image(JX, JY, 'joystick_thumb')
+      .setScrollFactor(0).setDepth(2001).setAlpha(0.9);
+
+    // Attack button (bottom-right)
+    this.atkBtn = this.add.image(GAME_W - 48, GAME_H - 48, 'btn_attack')
+      .setScrollFactor(0).setDepth(2000).setAlpha(0.85);
+    this.add.text(GAME_W - 48, GAME_H - 70, 'ATTACK', {
+      fontFamily: 'monospace', fontSize: '5px', color: '#ff6b35',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(2000).setAlpha(0.7);
+
+    // Interact button
+    this.itrBtn = this.add.image(GAME_W - 95, GAME_H - 40, 'btn_interact')
+      .setScrollFactor(0).setDepth(2000).setAlpha(0.85);
+    this.add.text(GAME_W - 95, GAME_H - 60, 'TALK', {
+      fontFamily: 'monospace', fontSize: '5px', color: '#6ab0e8',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(2000).setAlpha(0.7);
+
+    const JR = 38; // max radius
+
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      // Joystick zone: left 45% of screen
+      if (p.x < GAME_W * 0.45 && this.joyPointerID === -1) {
+        this.joyPointerID = p.id;
+      }
+      // Attack button zone: right side, bottom
+      if (p.x > GAME_W * 0.55 && p.y > GAME_H * 0.55) {
+        if (p.x > GAME_W - 90) {
+          this.inputMgr.joystickAttack = true;
+          this.time.delayedCall(120, () => { this.inputMgr.joystickAttack = false; });
+          this.tweens.add({ targets: this.atkBtn, scaleX: 0.85, scaleY: 0.85, duration: 80, yoyo: true });
+        } else {
+          this.inputMgr.joystickInteract = true;
+          this.time.delayedCall(120, () => { this.inputMgr.joystickInteract = false; });
+          this.tweens.add({ targets: this.itrBtn, scaleX: 0.85, scaleY: 0.85, duration: 80, yoyo: true });
+        }
+      }
+    });
+
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (p.id !== this.joyPointerID) return;
+      const dx = p.x - JX, dy = p.y - JY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const clamped = Math.min(dist, JR);
+      const angle = Math.atan2(dy, dx);
+      this.joyThumb.setPosition(JX + Math.cos(angle)*clamped, JY + Math.sin(angle)*clamped);
+      const norm = Math.min(dist / JR, 1);
+      this.inputMgr.joystickDX = Math.cos(angle) * norm;
+      this.inputMgr.joystickDY = Math.sin(angle) * norm;
+    });
+
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (p.id === this.joyPointerID) {
+        this.joyPointerID = -1;
+        this.joyThumb.setPosition(JX, JY);
+        this.inputMgr.joystickDX = 0;
+        this.inputMgr.joystickDY = 0;
+      }
     });
   }
 
-  private hideDialogue() {
-    this.bannerNPC = null;
-    this.tweens.add({
-      targets: this.dialogueBanner,
-      alpha: 0,
-      duration: 300,
-    });
-  }
-
-  update(time: number, delta: number) {
+  // ── Update ─────────────────────────────────────────────────────────────────
+  update(_time: number, delta: number) {
     this.portalTime += delta / 1000;
 
-    // Input
-    const inputState = this.inputMgr.getState();
-    this.player.setVelocity(inputState.worldDX, inputState.worldDY);
-    this.player.update(delta);
-
     // Portal pulse
-    this.portalGlow.setAlpha(0.5 + Math.sin(this.portalTime * 2.5) * 0.3);
-    this.portalGlow.setScale(0.5 + Math.sin(this.portalTime * 1.8) * 0.08);
+    this.portalGlow.setAlpha(0.45 + Math.sin(this.portalTime * 2.4) * 0.28);
+    this.portalGlow.setScale(0.48 + Math.sin(this.portalTime * 1.7) * 0.07);
 
-    // NPC proximity check for dialogue banner
-    const pw = this.player.worldX;
-    const ph = this.player.worldY;
-
-    let nearestNPC: NPCDef | null = null;
-    let nearestDist = 3.5; // tile units
-
-    for (const npc of this.npcSprites) {
-      const dist = Math.sqrt(
-        Math.pow(pw - npc.data.col, 2) + Math.pow(ph - npc.data.row, 2)
-      );
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestNPC = npc.data;
-      }
+    // Block movement during intro
+    if (this.introActive) {
+      this.events.emit('update-stats', this.player.playerStats);
+      return;
     }
 
-    if (nearestNPC && this.bannerNPC !== nearestNPC) {
-      this.showDialogue(nearestNPC);
-    } else if (!nearestNPC && this.bannerNPC) {
-      this.hideDialogue();
-    }
+    // Input → player
+    const inp = this.inputMgr.getState();
+    this.player.setVelocity(inp.worldDX, inp.worldDY);
+    this.player.update(delta);
+    this.syncPlayerPos();
 
-    // Auto-hide banner after timer
-    if (this.bannerNPC) {
+    // NPC proximity
+    const px = this.player.worldX, py = this.player.worldY;
+    let nearest: NPCDef | null = null, nearDist = 3.2;
+    for (const n of this.npcSprites) {
+      const d = Math.hypot(px - n.data.col, py - n.data.row);
+      if (d < nearDist) { nearDist = d; nearest = n.data; }
+    }
+    if (nearest && this.nearNPC !== nearest) this.showBanner(nearest);
+    else if (!nearest && this.nearNPC) this.hideBanner();
+
+    if (this.nearNPC) {
       this.bannerTimer -= delta;
-      if (this.bannerTimer <= 0) this.hideDialogue();
+      if (this.bannerTimer <= 0) this.hideBanner();
     }
 
-    // Emit stats to UIScene
-    this.events.emit('update-stats', this.player.getStats());
-
-    // Sync player world position to screen correctly
-    const rtW = (HUB_COLS + HUB_ROWS) * TILE_HALF_W;
-    const playerScreen = gridToScreen(this.player.worldX, this.player.worldY);
-    this.player.x = playerScreen.x + this.mapOriginX + rtW / 2 - TILE_HALF_W;
-    this.player.y = playerScreen.y + this.mapOriginY - 10;
-    this.player.setDepth(depthOf(this.player.worldX, this.player.worldY) + 50);
+    this.events.emit('update-stats', this.player.playerStats);
   }
 }

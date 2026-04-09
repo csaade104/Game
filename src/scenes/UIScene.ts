@@ -1,197 +1,118 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, DEPTH } from '../config';
 import { PALETTE } from '../utils/ColorPalette';
-import { VirtualJoystick } from '../ui/VirtualJoystick';
-import { InputManager } from '../systems/InputManager';
-import { Player } from '../entities/Player';
 import { pulse } from '../utils/Easing';
 
 interface Stats {
   hp: number; maxHp: number;
   stamina: number; maxStamina: number;
   mana: number; maxMana: number;
-  level: number; xp: number;
-  embers: number;
+  level: number; xp: number; embers: number;
 }
 
 export class UIScene extends Phaser.Scene {
-  private inputManager!: InputManager;
-  private joystick!: VirtualJoystick;
-
-  // HUD elements
-  private hpBar!: Phaser.GameObjects.Image;
-  private hpBg!: Phaser.GameObjects.Image;
-  private staminaBar!: Phaser.GameObjects.Image;
-  private staminaBg!: Phaser.GameObjects.Image;
-  private manaBar!: Phaser.GameObjects.Image;
-  private manaBg!: Phaser.GameObjects.Image;
-  private xpBar!: Phaser.GameObjects.Graphics;
-  private xpBg!: Phaser.GameObjects.Graphics;
+  private hpBar!: Phaser.GameObjects.Rectangle;
+  private stBar!: Phaser.GameObjects.Rectangle;
+  private mpBar!: Phaser.GameObjects.Rectangle;
+  private xpBar!: Phaser.GameObjects.Rectangle;
   private levelText!: Phaser.GameObjects.Text;
   private emberText!: Phaser.GameObjects.Text;
-  private emberIcon!: Phaser.GameObjects.Image;
-
-  // Corner overlay
-  private hudPanel!: Phaser.GameObjects.Graphics;
-
+  private emberGlow!: Phaser.GameObjects.Image;
   private uiTime = 0;
-  private lastStats: Stats | null = null;
 
   constructor() { super({ key: 'UIScene', active: false }); }
 
   create() {
-    // Input (shares keyboard with HubScene)
-    this.inputManager = new InputManager(this);
-    this.joystick = new VirtualJoystick(this, this.inputManager);
-
     this.buildHUD();
-
-    // Listen for stat updates from HubScene
     const hub = this.scene.get('HubScene');
     if (hub) {
-      hub.events.on('update-stats', (stats: Stats) => {
-        this.lastStats = stats;
-        this.updateBars(stats);
-      });
+      hub.events.on('update-stats', (s: Stats) => this.updateBars(s));
     }
-
-    // Fade in
     this.cameras.main.fadeIn(400, 0, 0, 0);
   }
 
   private buildHUD() {
-    const pad = 8;
+    const pad = 10;
+    const BAR_W = 110;
 
-    // ── Left panel (HP / Stamina / Mana) ─────────────────────────────────
-    this.hudPanel = this.add.graphics();
-    this.hudPanel.fillStyle(0x0a0608, 0.7);
-    this.hudPanel.fillRect(pad - 2, pad - 2, 116, 50);
-    this.hudPanel.lineStyle(1, PALETTE.EMBER_DEEP, 0.5);
-    this.hudPanel.strokeRect(pad - 2, pad - 2, 116, 50);
-    this.hudPanel.setScrollFactor(0).setDepth(DEPTH.HUD);
+    // ── Left panel ────────────────────────────────────────────────────────
+    const panel = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.HUD);
+    panel.fillStyle(0x080508, 0.82);
+    panel.fillRoundedRect(pad - 4, pad - 4, BAR_W + 36, 64, 4);
+    panel.lineStyle(1.5, PALETTE.EMBER_MID, 0.7);
+    panel.strokeRoundedRect(pad - 4, pad - 4, BAR_W + 36, 64, 4);
 
-    const BAR_W = 100;
-
-    // HP label + bar
-    this.add.text(pad, pad, 'HP', {
-      fontFamily: 'monospace', fontSize: '5px', color: '#c0392b',
-    }).setScrollFactor(0).setDepth(DEPTH.HUD);
-
-    this.hpBg = this.add.image(pad + 14, pad + 1, 'bar_bg')
-      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD)
-      .setDisplaySize(BAR_W, 8);
-    this.hpBar = this.add.image(pad + 14, pad + 1, 'bar_hp')
-      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1)
-      .setDisplaySize(BAR_W, 8);
+    // HP
+    this.add.text(pad, pad + 2, '♥', { fontFamily: 'monospace', fontSize: '9px', color: '#e74c3c' })
+      .setScrollFactor(0).setDepth(DEPTH.HUD);
+    this.addBarTrack(pad + 14, pad + 3, BAR_W, 10);
+    this.hpBar = this.add.rectangle(pad + 14, pad + 3, BAR_W, 10, 0xc0392b)
+      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
+    // HP shimmer
+    this.add.rectangle(pad + 14, pad + 3, BAR_W, 3, 0xe74c3c, 0.5)
+      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 2);
 
     // Stamina
-    this.add.text(pad, pad + 12, 'ST', {
-      fontFamily: 'monospace', fontSize: '5px', color: '#27ae60',
-    }).setScrollFactor(0).setDepth(DEPTH.HUD);
-
-    this.staminaBg = this.add.image(pad + 14, pad + 13, 'bar_bg')
-      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD)
-      .setDisplaySize(BAR_W, 6);
-    this.staminaBar = this.add.image(pad + 14, pad + 13, 'bar_stamina')
-      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1)
-      .setDisplaySize(BAR_W, 6);
+    this.add.text(pad, pad + 17, '⚡', { fontFamily: 'monospace', fontSize: '7px', color: '#2ecc71' })
+      .setScrollFactor(0).setDepth(DEPTH.HUD);
+    this.addBarTrack(pad + 14, pad + 17, BAR_W, 8);
+    this.stBar = this.add.rectangle(pad + 14, pad + 17, BAR_W, 8, 0x1a8040)
+      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
 
     // Mana
-    this.add.text(pad, pad + 22, 'MP', {
-      fontFamily: 'monospace', fontSize: '5px', color: '#2980b9',
-    }).setScrollFactor(0).setDepth(DEPTH.HUD);
+    this.add.text(pad, pad + 29, '✦', { fontFamily: 'monospace', fontSize: '7px', color: '#3498db' })
+      .setScrollFactor(0).setDepth(DEPTH.HUD);
+    this.addBarTrack(pad + 14, pad + 29, BAR_W, 8);
+    this.mpBar = this.add.rectangle(pad + 14, pad + 29, BAR_W, 8, 0x1a4090)
+      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
 
-    this.manaBg = this.add.image(pad + 14, pad + 23, 'bar_bg')
-      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD)
-      .setDisplaySize(BAR_W, 6);
-    this.manaBar = this.add.image(pad + 14, pad + 23, 'bar_mana')
-      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1)
-      .setDisplaySize(BAR_W, 6);
-
-    // Level badge
-    this.levelText = this.add.text(pad + 2, pad + 34, 'LVL 1', {
+    // Level + XP
+    this.levelText = this.add.text(pad, pad + 42, 'LVL 1', {
       fontFamily: 'monospace', fontSize: '6px', color: '#ffd166',
     }).setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    // XP bar
-    this.xpBg = this.add.graphics()
-      .setScrollFactor(0).setDepth(DEPTH.HUD);
-    this.xpBg.fillStyle(0x1a1010, 1);
-    this.xpBg.fillRect(pad + 38, pad + 36, 70, 4);
+    this.addBarTrack(pad + 30, pad + 44, BAR_W - 6, 5);
+    this.xpBar = this.add.rectangle(pad + 30, pad + 44, 0, 5, 0xffd166)
+      .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
 
-    this.xpBar = this.add.graphics()
-      .setScrollFactor(0).setDepth(DEPTH.HUD + 1);
+    // ── Embers (top-right) ───────────────────────────────────────────────
+    const ep = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.HUD);
+    ep.fillStyle(0x080508, 0.82);
+    ep.fillRoundedRect(GAME_W - 70, pad - 4, 64, 22, 4);
+    ep.lineStyle(1.5, PALETTE.EMBER_DEEP, 0.7);
+    ep.strokeRoundedRect(GAME_W - 70, pad - 4, 64, 22, 4);
 
-    // ── Embers (top-right corner) ─────────────────────────────────────────
-    const ePanel = this.add.graphics()
-      .setScrollFactor(0).setDepth(DEPTH.HUD);
-    ePanel.fillStyle(0x0a0608, 0.7);
-    ePanel.fillRect(GAME_W - 60, pad - 2, 54, 16);
-    ePanel.lineStyle(1, PALETTE.EMBER_DEEP, 0.5);
-    ePanel.strokeRect(GAME_W - 60, pad - 2, 54, 16);
-
-    this.emberIcon = this.add.image(GAME_W - 54, pad + 5, 'icon_ember')
+    this.emberGlow = this.add.image(GAME_W - 60, pad + 7, 'icon_ember')
       .setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    this.emberText = this.add.text(GAME_W - 44, pad, '0', {
-      fontFamily: 'monospace', fontSize: '7px', color: '#ffd166',
+    this.emberText = this.add.text(GAME_W - 46, pad + 1, '0', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#ffd166',
     }).setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    // ── Controls hint (bottom, disappears after 5s) ────────────────────────
-    const hint = this.add.text(GAME_W / 2, GAME_H - 8, 'WASD / Arrow Keys to move  •  E to interact', {
-      fontFamily: 'monospace', fontSize: '5px', color: '#4a3a2a',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(DEPTH.HUD);
-
-    this.tweens.add({
-      targets: hint,
-      alpha: 0,
-      duration: 1000,
-      delay: 5000,
-    });
-
-    // Initial bar render
-    this.updateBars({
-      hp: 100, maxHp: 100,
-      stamina: 80, maxStamina: 80,
-      mana: 60, maxMana: 60,
-      level: 1, xp: 0,
-      embers: 0,
-    });
+    // Initial fill
+    this.updateBars({ hp:100,maxHp:100,stamina:80,maxStamina:80,mana:60,maxMana:60,level:1,xp:0,embers:0 });
   }
 
-  private updateBars(stats: Stats) {
-    const BAR_W = 100;
-    const pad = 8;
-
-    // HP
-    const hpPct = Math.max(0, stats.hp / stats.maxHp);
-    this.hpBar.setDisplaySize(Math.max(1, BAR_W * hpPct), 8);
-
-    // Stamina
-    const stPct = Math.max(0, stats.stamina / stats.maxStamina);
-    this.staminaBar.setDisplaySize(Math.max(1, BAR_W * stPct), 6);
-
-    // Mana
-    const mpPct = Math.max(0, stats.mana / stats.maxMana);
-    this.manaBar.setDisplaySize(Math.max(1, BAR_W * mpPct), 6);
-
-    // Level
-    this.levelText.setText(`LVL ${stats.level}`);
-
-    // XP
-    const xpPct = stats.xp / (stats.level * 100);
-    this.xpBar.clear();
-    this.xpBar.fillStyle(0xffd166, 1);
-    this.xpBar.fillRect(pad + 38, pad + 36, 70 * xpPct, 4);
-
-    // Embers
-    this.emberText.setText(String(stats.embers));
+  private addBarTrack(x: number, y: number, w: number, h: number) {
+    this.add.rectangle(x, y, w, h, 0x0c0810).setOrigin(0, 0)
+      .setScrollFactor(0).setDepth(DEPTH.HUD);
+    const border = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.HUD);
+    border.lineStyle(1, 0x2a1818, 0.8);
+    border.strokeRect(x, y, w, h);
   }
 
-  update(_time: number, delta: number) {
+  private updateBars(s: Stats) {
+    const BAR_W = 110;
+    this.hpBar.setSize(Math.max(1, BAR_W * Math.max(0, s.hp / s.maxHp)), 10);
+    this.stBar.setSize(Math.max(1, BAR_W * Math.max(0, s.stamina / s.maxStamina)), 8);
+    this.mpBar.setSize(Math.max(1, BAR_W * Math.max(0, s.mana / s.maxMana)), 8);
+    this.xpBar.setSize(Math.max(0, (BAR_W - 6) * (s.xp / (s.level * 100))), 5);
+    this.levelText.setText(`LVL ${s.level}`);
+    this.emberText.setText(String(s.embers));
+  }
+
+  update(_t: number, delta: number) {
     this.uiTime += delta / 1000;
-
-    // Pulse ember icon
-    this.emberIcon.setAlpha(0.7 + pulse(this.uiTime, 1.2) * 0.3);
+    this.emberGlow.setAlpha(0.8 + pulse(this.uiTime, 1.5) * 0.2);
   }
 }
