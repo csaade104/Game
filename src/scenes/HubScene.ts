@@ -196,9 +196,9 @@ export class HubScene extends Phaser.Scene {
       }});
 
       // Name label
-      this.add.text(s.x, s.y - 28, def.name, {
-        fontFamily: 'monospace', fontSize: '5px', color: '#d0b898',
-        backgroundColor: '#0a0608cc', padding: { x: 3, y: 1 },
+      this.add.text(s.x, s.y - 32, def.name, {
+        fontFamily: 'monospace', fontSize: '8px', color: '#d0b898',
+        backgroundColor: '#0a0608cc', padding: { x: 4, y: 2 },
       }).setOrigin(0.5).setDepth(depthOf(def.col, def.row) + 21);
 
       this.npcSprites.push({ sprite, data: def });
@@ -236,19 +236,19 @@ export class HubScene extends Phaser.Scene {
     bg.lineStyle(1, PALETTE.STONE_DARK, 0.4); bg.strokeRoundedRect(-146, -24, 292, 48, 3);
     this.banner.add(bg);
 
-    this.bannerSpeaker = this.add.text(-136, -20, '', {
-      fontFamily: 'monospace', fontSize: '6px', color: '#ff6b35', letterSpacing: 1,
+    this.bannerSpeaker = this.add.text(-136, -22, '', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#ff6b35', letterSpacing: 1,
     });
     this.banner.add(this.bannerSpeaker);
 
     this.bannerText = this.add.text(-136, -8, '', {
-      fontFamily: 'monospace', fontSize: '6px', color: '#e8d5b0',
-      wordWrap: { width: 272 }, lineSpacing: 2,
+      fontFamily: 'monospace', fontSize: '8px', color: '#e8d5b0',
+      wordWrap: { width: 272 }, lineSpacing: 3,
     });
     this.banner.add(this.bannerText);
 
-    const hint = this.add.text(118, 20, '[E] Talk', {
-      fontFamily: 'monospace', fontSize: '5px', color: '#5a4030',
+    const hint = this.add.text(112, 22, '[E]', {
+      fontFamily: 'monospace', fontSize: '8px', color: '#5a4030',
     });
     this.banner.add(hint);
   }
@@ -289,14 +289,14 @@ export class HubScene extends Phaser.Scene {
       'Descend. Rekindle it. Before everything ends.',
     ];
 
-    const textObj = this.add.text(SW / 2, SH / 2 - 20, '', {
-      fontFamily: 'monospace', fontSize: '7px', color: '#e8d5b0',
-      align: 'center', wordWrap: { width: SW - 60 }, lineSpacing: 4,
+    const textObj = this.add.text(SW / 2, SH / 2 - 30, '', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#e8d5b0',
+      align: 'center', wordWrap: { width: SW - 80 }, lineSpacing: 6,
     }).setOrigin(0.5);
     this.introContainer.add(textObj);
 
-    const skipText = this.add.text(SW / 2, SH - 24, 'TAP TO CONTINUE', {
-      fontFamily: 'monospace', fontSize: '6px', color: '#ff6b35', alpha: 0,
+    const skipText = this.add.text(SW / 2, SH - 30, 'TAP TO CONTINUE', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#ff6b35', alpha: 0,
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5);
     this.introContainer.add(skipText);
 

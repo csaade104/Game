@@ -60,16 +60,25 @@
   </div>
   <script type="module" src="/src/main.ts"></script>
   <script>
-    if (screen.orientation?.lock) screen.orientation.lock('landscape').catch(()=>{});
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const lockLandscape = () => {
+      if (screen.orientation?.lock) screen.orientation.lock('landscape').catch(()=>{});
+    };
     if (!isIOS) {
       const fs = () => {
         const el = document.documentElement;
-        if (el.requestFullscreen) el.requestFullscreen({navigationUI:'hide'}).catch(()=>{});
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        if (el.requestFullscreen) {
+          el.requestFullscreen({navigationUI:'hide'}).then(lockLandscape).catch(()=>{});
+        } else if (el.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
+          setTimeout(lockLandscape, 200);
+        }
       };
       document.addEventListener('touchstart', fs, {once:true});
       document.addEventListener('click', fs, {once:true});
+    } else {
+      // iOS: try immediately (won't lock, but attempt orientation via ScreenOrientation API if available)
+      lockLandscape();
     }
   </script>
 </body>

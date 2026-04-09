@@ -86,9 +86,12 @@ export function velocityToDir(dx: number, dy: number): string {
  * Output: world-space dx/dy.
  */
 export function screenInputToWorld(inputX: number, inputY: number): WorldPos {
-  // Rotate 45° for isometric
+  // Inverse isometric projection: screen directions → isometric world axes.
+  // Joystick/keyboard UP stays UP on screen, RIGHT stays RIGHT.
+  // x = (inputX + inputY) * 0.707  → rightward screen = +col, downward = +col
+  // y = (-inputX + inputY) * 0.707 → rightward screen = -row, downward = +row
   return {
-    x: (inputX - inputY) * 0.707,
-    y: (inputX + inputY) * 0.707,
+    x:  (inputX + inputY) * 0.707,
+    y:  (-inputX + inputY) * 0.707,
   };
 }

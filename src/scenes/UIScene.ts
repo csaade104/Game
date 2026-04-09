@@ -50,17 +50,17 @@ export class UIScene extends Phaser.Scene {
       .setDepth(DEPTH.HUD + 51).setAlpha(0);
 
     // Right-side buttons
-    this.atkBtn = this.add.image(SW - 60, SH - 60, 'btn_attack')
-      .setDepth(DEPTH.HUD + 50).setAlpha(0.85);
-    this.add.text(SW - 60, SH - 88, 'ATTACK', {
-      fontFamily: 'monospace', fontSize: '6px', color: '#ff6b35',
-    }).setOrigin(0.5).setDepth(DEPTH.HUD + 50).setAlpha(0.8);
+    this.atkBtn = this.add.image(SW - 60, SH - 62, 'btn_attack')
+      .setDepth(DEPTH.HUD + 50).setAlpha(0.88);
+    this.add.text(SW - 60, SH - 96, 'ATTACK', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#ff6b35',
+    }).setOrigin(0.5).setDepth(DEPTH.HUD + 50).setAlpha(0.9);
 
-    this.itrBtn = this.add.image(SW - 120, SH - 50, 'btn_interact')
-      .setDepth(DEPTH.HUD + 50).setAlpha(0.85);
-    this.add.text(SW - 120, SH - 76, 'TALK', {
-      fontFamily: 'monospace', fontSize: '6px', color: '#6ab0e8',
-    }).setOrigin(0.5).setDepth(DEPTH.HUD + 50).setAlpha(0.8);
+    this.itrBtn = this.add.image(SW - 128, SH - 52, 'btn_interact')
+      .setDepth(DEPTH.HUD + 50).setAlpha(0.88);
+    this.add.text(SW - 128, SH - 82, 'TALK', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#6ab0e8',
+    }).setOrigin(0.5).setDepth(DEPTH.HUD + 50).setAlpha(0.9);
 
     let activeX = 0, activeY = 0;
 
@@ -111,60 +111,63 @@ export class UIScene extends Phaser.Scene {
 
   private buildHUD() {
     const pad = 10;
-    const BAR_W = 110;
+    const BAR_W = 120;
+    const ICON_X = pad + 2;
+    const BAR_X = pad + 20;
 
     // ── Left panel ────────────────────────────────────────────────────────
+    const panelH = 80;
     const panel = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.HUD);
-    panel.fillStyle(0x080508, 0.82);
-    panel.fillRoundedRect(pad - 4, pad - 4, BAR_W + 36, 64, 4);
-    panel.lineStyle(1.5, PALETTE.EMBER_MID, 0.7);
-    panel.strokeRoundedRect(pad - 4, pad - 4, BAR_W + 36, 64, 4);
+    panel.fillStyle(0x080508, 0.88);
+    panel.fillRoundedRect(pad - 6, pad - 6, BAR_W + 40, panelH, 5);
+    panel.lineStyle(1.5, PALETTE.EMBER_MID, 0.75);
+    panel.strokeRoundedRect(pad - 6, pad - 6, BAR_W + 40, panelH, 5);
 
     // HP
-    this.add.text(pad, pad + 2, '♥', { fontFamily: 'monospace', fontSize: '9px', color: '#e74c3c' })
+    this.add.text(ICON_X, pad + 1, '♥', { fontFamily: 'monospace', fontSize: '12px', color: '#e74c3c' })
       .setScrollFactor(0).setDepth(DEPTH.HUD);
-    this.addBarTrack(pad + 14, pad + 3, BAR_W, 10);
-    this.hpBar = this.add.rectangle(pad + 14, pad + 3, BAR_W, 10, 0xc0392b)
+    this.addBarTrack(BAR_X, pad + 4, BAR_W, 11);
+    this.hpBar = this.add.rectangle(BAR_X, pad + 4, BAR_W, 11, 0xc0392b)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
     // HP shimmer
-    this.add.rectangle(pad + 14, pad + 3, BAR_W, 3, 0xe74c3c, 0.5)
+    this.add.rectangle(BAR_X, pad + 4, BAR_W, 3, 0xe74c3c, 0.45)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 2);
 
     // Stamina
-    this.add.text(pad, pad + 17, '⚡', { fontFamily: 'monospace', fontSize: '7px', color: '#2ecc71' })
+    this.add.text(ICON_X, pad + 19, '⚡', { fontFamily: 'monospace', fontSize: '10px', color: '#2ecc71' })
       .setScrollFactor(0).setDepth(DEPTH.HUD);
-    this.addBarTrack(pad + 14, pad + 17, BAR_W, 8);
-    this.stBar = this.add.rectangle(pad + 14, pad + 17, BAR_W, 8, 0x1a8040)
+    this.addBarTrack(BAR_X, pad + 20, BAR_W, 9);
+    this.stBar = this.add.rectangle(BAR_X, pad + 20, BAR_W, 9, 0x1a8040)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
 
     // Mana
-    this.add.text(pad, pad + 29, '✦', { fontFamily: 'monospace', fontSize: '7px', color: '#3498db' })
+    this.add.text(ICON_X, pad + 33, '✦', { fontFamily: 'monospace', fontSize: '10px', color: '#3498db' })
       .setScrollFactor(0).setDepth(DEPTH.HUD);
-    this.addBarTrack(pad + 14, pad + 29, BAR_W, 8);
-    this.mpBar = this.add.rectangle(pad + 14, pad + 29, BAR_W, 8, 0x1a4090)
+    this.addBarTrack(BAR_X, pad + 34, BAR_W, 9);
+    this.mpBar = this.add.rectangle(BAR_X, pad + 34, BAR_W, 9, 0x1a4090)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
 
     // Level + XP
-    this.levelText = this.add.text(pad, pad + 42, 'LVL 1', {
-      fontFamily: 'monospace', fontSize: '6px', color: '#ffd166',
+    this.levelText = this.add.text(ICON_X, pad + 48, 'LVL 1', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#ffd166',
     }).setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    this.addBarTrack(pad + 30, pad + 44, BAR_W - 6, 5);
-    this.xpBar = this.add.rectangle(pad + 30, pad + 44, 0, 5, 0xffd166)
+    this.addBarTrack(pad + 40, pad + 50, BAR_W - 12, 6);
+    this.xpBar = this.add.rectangle(pad + 40, pad + 50, 0, 6, 0xffd166)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
 
     // ── Embers (top-right) ───────────────────────────────────────────────
     const ep = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.HUD);
-    ep.fillStyle(0x080508, 0.82);
-    ep.fillRoundedRect(this.scale.width - 70, pad - 4, 64, 22, 4);
-    ep.lineStyle(1.5, PALETTE.EMBER_DEEP, 0.7);
-    ep.strokeRoundedRect(this.scale.width - 70, pad - 4, 64, 22, 4);
+    ep.fillStyle(0x080508, 0.88);
+    ep.fillRoundedRect(this.scale.width - 80, pad - 6, 74, 28, 5);
+    ep.lineStyle(1.5, PALETTE.EMBER_DEEP, 0.75);
+    ep.strokeRoundedRect(this.scale.width - 80, pad - 6, 74, 28, 5);
 
-    this.emberGlow = this.add.image(this.scale.width - 60, pad + 7, 'icon_ember')
+    this.emberGlow = this.add.image(this.scale.width - 68, pad + 8, 'icon_ember')
       .setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    this.emberText = this.add.text(this.scale.width - 46, pad + 1, '0', {
-      fontFamily: 'monospace', fontSize: '9px', color: '#ffd166',
+    this.emberText = this.add.text(this.scale.width - 52, pad + 1, '0', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#ffd166',
     }).setScrollFactor(0).setDepth(DEPTH.HUD);
 
     // Initial fill
@@ -180,11 +183,11 @@ export class UIScene extends Phaser.Scene {
   }
 
   private updateBars(s: Stats) {
-    const BAR_W = 110;
-    this.hpBar.setSize(Math.max(1, BAR_W * Math.max(0, s.hp / s.maxHp)), 10);
-    this.stBar.setSize(Math.max(1, BAR_W * Math.max(0, s.stamina / s.maxStamina)), 8);
-    this.mpBar.setSize(Math.max(1, BAR_W * Math.max(0, s.mana / s.maxMana)), 8);
-    this.xpBar.setSize(Math.max(0, (BAR_W - 6) * (s.xp / (s.level * 100))), 5);
+    const BAR_W = 120;
+    this.hpBar.setSize(Math.max(1, BAR_W * Math.max(0, s.hp / s.maxHp)), 11);
+    this.stBar.setSize(Math.max(1, BAR_W * Math.max(0, s.stamina / s.maxStamina)), 9);
+    this.mpBar.setSize(Math.max(1, BAR_W * Math.max(0, s.mana / s.maxMana)), 9);
+    this.xpBar.setSize(Math.max(0, (BAR_W - 12) * (s.xp / (s.level * 100))), 6);
     this.levelText.setText(`LVL ${s.level}`);
     this.emberText.setText(String(s.embers));
   }
