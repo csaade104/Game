@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { DEPTH } from '../config';
 import { PALETTE } from '../utils/ColorPalette';
 import { pulse } from '../utils/Easing';
-import { HubScene, DialogueData } from './HubScene';
+import { HubScene, DialogueData, ShopOpenData } from './HubScene';
 import { InputManager } from '../systems/InputManager';
 
 interface Stats {
@@ -52,6 +52,15 @@ export class UIScene extends Phaser.Scene {
   // Dungeon exit prompt
   private exitPromptUI!: Phaser.GameObjects.Container;
   private dungeonDepthText!: Phaser.GameObjects.Text;
+  // Shop
+  private shopBox!: Phaser.GameObjects.Container;
+  private shopItemsArea!: Phaser.GameObjects.Container;
+  private shopPortrait!: Phaser.GameObjects.Image;
+  private shopNPCName!: Phaser.GameObjects.Text;
+  private shopEmberCounter!: Phaser.GameObjects.Text;
+  private shopData: ShopOpenData | null = null;
+  // Level-up
+  private lastLevel = 1;
 
   constructor() { super({ key: 'UIScene', active: false }); }
 
@@ -65,6 +74,7 @@ export class UIScene extends Phaser.Scene {
     this.buildPortalUI();
     this.buildExitPrompt();
     this.buildDungeonDepthIndicator();
+    this.buildShopUI();
     this.buildControlsHint();
 
     // E key advances open dialogue
@@ -99,6 +109,7 @@ export class UIScene extends Phaser.Scene {
     scene.events.on('portal-enter',  () => this.showPortalOverlay());
     scene.events.on('portal-exit',   () => this.hidePortalOverlay());
     scene.events.on('exit-prompt',   (show: boolean) => this.showExitPrompt(show));
+    scene.events.on('open-shop',     (d: ShopOpenData) => this.openShop(d));
 
     // Show/hide dungeon depth indicator
     const inDungeon = scene.scene.key === 'DungeonScene';
@@ -264,6 +275,15 @@ export class UIScene extends Phaser.Scene {
     this.xpBar.setSize(Math.max(0, (BAR_W - 12) * (s.xp / (s.level * 100))), 6);
     this.levelText.setText(`LVL ${s.level}`);
     this.emberText.setText(String(s.embers));
+    // Refresh shop ember counter if open
+    if (this.shopData && this.shopEmberCounter) {
+      this.shopEmberCounter.setText(`${s.embers} ◆`);
+    }
+    // Level-up detection
+    if (s.level > this.lastLevel) {
+      this.lastLevel = s.level;
+      this.showLevelUp(s.level);
+    }
   }
 
   // ── NPC proximity prompt ──────────────────────────────────────────────────────
@@ -569,6 +589,180 @@ export class UIScene extends Phaser.Scene {
     if (!this.exitPromptUI) return;
     this.tweens.killTweensOf(this.exitPromptUI);
     this.tweens.add({ targets: this.exitPromptUI, alpha: show ? 1 : 0, duration: 200 });
+  }
+
+  // ── Shop UI ──────────────────────────────────────────────────────────────────
+  private buildShopUI() {
+    const SW = this.scale.width, SH = this.scale.height;
+    const BW = Math.min(SW - 24, 380);
+    const BH = Math.min(SH - 30, 310);
+
+    this.shopBox = this.add.container(SW / 2, SH / 2)
+      .setDepth(DEPTH.DIALOGUE + 30).setAlpha(0);
+
+    // Background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x060410, 0.97);
+    bg.fillRoundedRect(-BW / 2, -BH / 2, BW, BH, 7);
+    bg.lineStyle(2, PALETTE.EMBER_DEEP, 0.9);
+    bg.strokeRoundedRect(-BW / 2, -BH / 2, BW, BH, 7);
+    bg.lineStyle(0.8, PALETTE.EMBER_MID, 0.2);
+    bg.strokeRoundedRect(-BW / 2 + 4, -BH / 2 + 4, BW - 8, BH - 8, 5);
+    this.shopBox.add(bg);
+
+    // Header bar
+    const hdr = this.add.graphics();
+    hdr.fillStyle(PALETTE.EMBER_DEEP, 0.25);
+    hdr.fillRoundedRect(-BW / 2, -BH / 2, BW, 48, { tl: 7, tr: 7, bl: 0, br: 0 });
+    this.shopBox.add(hdr);
+
+    // NPC portrait
+    this.shopPortrait = this.add.image(-BW / 2 + 30, -BH / 2 + 24, 'npc_baelor', 0)
+      .setScale(1.8).setDepth(1);
+    this.shopBox.add(this.shopPortrait);
+
+    // NPC name + title
+    this.shopNPCName = this.add.text(-BW / 2 + 58, -BH / 2 + 10, '', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#ff7840', letterSpacing: 1,
+    }).setDepth(1);
+    this.shopBox.add(this.shopNPCName);
+
+    const tradeLabel = this.add.text(-BW / 2 + 58, -BH / 2 + 26, '— TRADE EMBERS —', {
+      fontFamily: 'monospace', fontSize: '8px', color: '#6a4828',
+    }).setDepth(1);
+    this.shopBox.add(tradeLabel);
+
+    // Ember counter (top right)
+    this.shopEmberCounter = this.add.text(BW / 2 - 8, -BH / 2 + 28, '0 ◆', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#ffd060',
+    }).setOrigin(1, 0.5).setDepth(1);
+    this.shopBox.add(this.shopEmberCounter);
+
+    // Items area (dynamic, rebuilt on each open)
+    this.shopItemsArea = this.add.container(0, -BH / 2 + 62);
+    this.shopBox.add(this.shopItemsArea);
+
+    // Close button
+    const closeBtn = this.add.text(BW / 2 - 10, BH / 2 - 10, '✕ CLOSE', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#5a4030',
+    }).setOrigin(1, 1).setDepth(1).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.closeShopUI());
+    closeBtn.on('pointerover', () => closeBtn.setColor('#c07040'));
+    closeBtn.on('pointerout',  () => closeBtn.setColor('#5a4030'));
+    this.shopBox.add(closeBtn);
+  }
+
+  private openShop(data: ShopOpenData) {
+    this.shopData = data;
+    this.shopNPCName.setText(data.name.toUpperCase());
+    this.shopPortrait.setTexture(data.key, 0);
+    this.shopEmberCounter.setText(`${this.emberText.text} ◆`);
+
+    this.rebuildShopItems(data);
+
+    this.tweens.killTweensOf(this.shopBox);
+    this.tweens.add({ targets: this.shopBox, alpha: 1, duration: 200, ease: 'Sine.Out' });
+    // Hide NPC proximity prompt
+    this.tweens.add({ targets: this.npcPrompt, alpha: 0, duration: 100 });
+  }
+
+  private rebuildShopItems(data: ShopOpenData) {
+    this.shopItemsArea.removeAll(true);
+    const SW = this.scale.width;
+    const BW = Math.min(SW - 24, 380);
+    const itemH = 62;
+
+    data.items.forEach((item, i) => {
+      const yOff = i * itemH;
+      const row = this.add.container(0, yOff);
+
+      const rowBg = this.add.graphics();
+      rowBg.fillStyle(0x0c0820, 0.7);
+      rowBg.fillRoundedRect(-BW / 2 + 10, 0, BW - 20, itemH - 6, 4);
+      rowBg.lineStyle(1, 0x201838, 0.8);
+      rowBg.strokeRoundedRect(-BW / 2 + 10, 0, BW - 20, itemH - 6, 4);
+      row.add(rowBg);
+
+      const label = this.add.text(-BW / 2 + 20, 8, item.label, {
+        fontFamily: 'monospace', fontSize: '10px', color: '#e8c898',
+      }).setDepth(1);
+      row.add(label);
+
+      const desc = this.add.text(-BW / 2 + 20, 24, item.desc, {
+        fontFamily: 'monospace', fontSize: '8px', color: '#7a6850',
+      }).setDepth(1);
+      row.add(desc);
+
+      const costTxt = this.add.text(BW / 2 - 80, 14, `${item.cost} ◆`, {
+        fontFamily: 'monospace', fontSize: '10px', color: '#ffd060',
+      }).setOrigin(0, 0.5).setDepth(1);
+      row.add(costTxt);
+
+      const buyBtn = this.add.text(BW / 2 - 20, 28, '▶ BUY', {
+        fontFamily: 'monospace', fontSize: '9px', color: '#ff6b35',
+        backgroundColor: '#1a0c08', padding: { x: 6, y: 3 },
+      }).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true });
+
+      buyBtn.on('pointerdown', () => {
+        const success = item.apply();
+        if (success) {
+          this.tweens.add({ targets: buyBtn, alpha: 0.3, duration: 60, yoyo: true });
+          this.rebuildShopItems(data); // refresh to show updated embers/affordability
+        } else {
+          buyBtn.setColor('#5a2010');
+          this.time.delayedCall(350, () => buyBtn.setColor('#ff6b35'));
+        }
+      });
+      buyBtn.on('pointerover', () => buyBtn.setColor('#ffa060'));
+      buyBtn.on('pointerout',  () => buyBtn.setColor('#ff6b35'));
+      row.add(buyBtn);
+
+      this.shopItemsArea.add(row);
+    });
+  }
+
+  private closeShopUI() {
+    if (!this.shopData) return;
+    const cb = this.shopData.onClose;
+    this.shopData = null;
+    this.tweens.add({ targets: this.shopBox, alpha: 0, duration: 180 });
+    cb();
+  }
+
+  // ── Level-up visual ───────────────────────────────────────────────────────────
+  private showLevelUp(level: number) {
+    const SW = this.scale.width, SH = this.scale.height;
+    const banner = this.add.container(SW / 2, SH / 2 - 40)
+      .setDepth(DEPTH.DIALOGUE + 60);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0xffd060, 0.12);
+    bg.fillRoundedRect(-125, -22, 250, 44, 6);
+    bg.lineStyle(2, 0xffd060, 0.7);
+    bg.strokeRoundedRect(-125, -22, 250, 44, 6);
+    banner.add(bg);
+
+    banner.add(this.add.text(0, -8, '✦  LEVEL UP  ✦', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#ffd060',
+      stroke: '#000000', strokeThickness: 2, letterSpacing: 2,
+    }).setOrigin(0.5).setDepth(1));
+
+    banner.add(this.add.text(0, 9, `NOW LEVEL ${level}  —  POWER GROWS`, {
+      fontFamily: 'monospace', fontSize: '8px', color: '#c0a850',
+    }).setOrigin(0.5).setDepth(1));
+
+    banner.setAlpha(0);
+    this.tweens.add({
+      targets: banner, alpha: 1, y: SH / 2 - 55, duration: 300, ease: 'Back.Out',
+      onComplete: () => {
+        this.time.delayedCall(1400, () => {
+          this.tweens.add({
+            targets: banner, alpha: 0, y: SH / 2 - 80, duration: 600,
+            onComplete: () => banner.destroy(),
+          });
+        });
+      },
+    });
   }
 
   // ── Controls hint (mobile only, fades after 8s) ───────────────────────────────

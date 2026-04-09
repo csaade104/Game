@@ -990,5 +990,86 @@ export class BootScene extends Phaser.Scene {
       g.generateTexture('tile_dungeon_exit', tw, th + sh);
       g.destroy();
     }
+
+    // ── Enemy: Boss / Void Wraith (26×40 canvas, 2 frames = 52×40) ──────────
+    {
+      const fw = 26, fh = 40;
+      const c = this.textures.createCanvas('enemy_boss', fw * 2, fh);
+      const el = c!.getSourceImage() as HTMLCanvasElement;
+      const ctx = el.getContext('2d')!;
+      const px = (x: number, y: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
+
+      for (let f = 0; f < 2; f++) {
+        const ox = f * fw;
+        const bob = f === 1 ? 1 : 0;
+        // Shadow
+        ctx.fillStyle = 'rgba(20,8,36,0.7)';
+        ctx.beginPath(); ctx.ellipse(ox + 13, bob + 38, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
+        // Cloak base — sweeps at bottom
+        for (let r = 26; r < 38; r++) {
+          const sp = Math.floor((r - 26) * 0.35);
+          for (let cc = 4 + sp; cc < 22 - sp; cc++) px(ox + cc, bob + r, '#180c28');
+        }
+        // Legs
+        for (let r = 18; r < 28; r++) {
+          for (let cc = 5; cc < 11; cc++) px(ox + cc, bob + r, '#261640');
+          for (let cc = 15; cc < 21; cc++) px(ox + cc, bob + r, '#261640');
+        }
+        // Body — massive dark armor
+        for (let r = 6; r < 20; r++)
+          for (let cc = 3; cc < 23; cc++) px(ox + cc, bob + r, '#20143a');
+        // Chest plate
+        for (let r = 8; r < 18; r++)
+          for (let cc = 7; cc < 19; cc++) px(ox + cc, bob + r, '#2c1e4c');
+        // Chest sigil
+        for (let cc = 10; cc < 16; cc++) { px(ox + cc, bob + 9, '#4c3070'); px(ox + cc, bob + 13, '#4c3070'); }
+        for (let r = 9; r < 14; r++) { px(ox + 10, bob + r, '#4c3070'); px(ox + 15, bob + r, '#4c3070'); }
+        // Shoulder spikes
+        for (let r = 0; r < 5; r++) {
+          px(ox + 1, bob + 7 + r, '#3c2858'); px(ox + 2, bob + 7 + r, '#3c2858');
+          px(ox + 23, bob + 7 + r, '#3c2858'); px(ox + 24, bob + 7 + r, '#3c2858');
+        }
+        // Crown horns
+        for (let cc = 9; cc < 11; cc++) { px(ox + cc, bob, '#4c3068'); px(ox + cc, bob + 1, '#4c3068'); }
+        for (let cc = 13; cc < 15; cc++) { px(ox + cc, bob, '#4c3068'); px(ox + cc, bob + 1, '#4c3068'); }
+        px(ox + 17, bob + 1, '#4c3068');
+        // Head
+        for (let r = 1; r < 8; r++)
+          for (let cc = 8; cc < 18; cc++) px(ox + cc, bob + r, '#1e1438');
+        // Visor shadow
+        for (let cc = 9; cc < 17; cc++) px(ox + cc, bob + 5, '#140e28');
+        // Two glowing purple eyes
+        for (let cc = 10; cc < 12; cc++) px(ox + cc, bob + 4, '#d060ff');
+        for (let cc = 15; cc < 17; cc++) px(ox + cc, bob + 4, '#d060ff');
+        ctx.fillStyle = 'rgba(180,60,255,0.38)';
+        ctx.beginPath(); ctx.arc(ox + 10.5, bob + 4, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ox + 15.5, bob + 4, 3, 0, Math.PI * 2); ctx.fill();
+        // Arms
+        for (let r = 7; r < 20; r++) {
+          px(ox + 0, bob + r, '#261840'); px(ox + 1, bob + r, '#261840'); px(ox + 2, bob + r, '#261840');
+          px(ox + 23, bob + r, '#261840'); px(ox + 24, bob + r, '#261840'); px(ox + 25, bob + r, '#261840');
+        }
+        // Sword (right)
+        for (let r = 16; r < 33; r++) px(ox + 25, bob + r, '#9090b0');
+        px(ox + 23, bob + 16, '#5050a0'); px(ox + 24, bob + 16, '#5050a0'); // crossguard
+        // Dark aura
+        ctx.fillStyle = 'rgba(80,20,140,0.14)';
+        ctx.beginPath(); ctx.ellipse(ox + 13, bob + 18, 15, 22, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      c!.refresh();
+    }
+
+    // ── Chest open (22×18) ─────────────────────────────────────────────────
+    { const g = this.g();
+      g.fillStyle(0x6a4018, 1); g.fillRect(0, 0, 22, 4);        // lid
+      g.fillStyle(0x5a3010, 1); g.fillRect(0, 3, 22, 2);
+      g.lineStyle(1, 0x3a1e08, 1); g.strokeRect(0, 0, 22, 5);
+      g.fillStyle(0x1a0c06, 1); g.fillRect(0, 5, 22, 2);         // gap
+      g.fillStyle(0x6a4018, 1); g.fillRect(0, 7, 22, 11);        // body
+      g.fillStyle(0x4a2808, 1); g.fillRect(0, 7, 22, 3);
+      g.fillStyle(0xff8020, 0.3); g.fillRect(2, 8, 18, 8);       // inner glow
+      g.fillStyle(0xffc060, 0.15); g.fillRect(5, 9, 12, 5);
+      g.lineStyle(1, 0x3a1e08, 1); g.strokeRect(0, 7, 22, 11);
+      g.generateTexture('prop_chest_open', 22, 18); g.destroy(); }
   }
 }

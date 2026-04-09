@@ -17,6 +17,7 @@ export class DungeonScene extends Phaser.Scene {
   private groundRT!: Phaser.GameObjects.RenderTexture;
   private enemies: Enemy[] = [];
   private emberPickups: Array<{ sprite: Phaser.GameObjects.Image; worldX: number; worldY: number }> = [];
+  private chests: Array<{ sprite: Phaser.GameObjects.Image; worldX: number; worldY: number; opened: boolean }> = [];
   private playerLightSprite!: Phaser.GameObjects.Image;
   private exitGlow!: Phaser.GameObjects.Image;
 
@@ -62,6 +63,7 @@ export class DungeonScene extends Phaser.Scene {
     this.spawnPlayer();
     this.spawnEnemies();
     this.spawnEmbers();
+    this.spawnChests();
     this.buildAtmosphere();
 
     this.cameras.main.startFollow(this.player, true, CAM_LERP, CAM_LERP);
@@ -255,21 +257,59 @@ export class DungeonScene extends Phaser.Scene {
 
   // ── Enemies ────────────────────────────────────────────────────────────────
   private spawnEnemies() {
-    const enemyCount = Math.min(4 + this.depth * 2, 18);
-    const usedRooms = new Set<number>();
-    usedRooms.add(0); // Don't spawn in start room
+    const lastRoomIdx = this.rooms.length - 1;
 
+    // Spawn boss in exit room at depth >= 2
+    if (this.depth >= 2 && this.rooms.length > 1) {
+      const bossCol = Math.floor(this.exitRoom.x + this.exitRoom.w / 2) - 1;
+      const bossRow = Math.floor(this.exitRoom.y + this.exitRoom.h / 2) - 1;
+      if (this.isTileWalkable(bossCol, bossRow)) {
+        this.enemies.push(new Enemy(this, bossCol + 0.5, bossRow + 0.5, 'boss'));
+      }
+      // Boss name label
+      const bs = this.isoToScene(bossCol + 0.5, bossRow + 0.5);
+      const nameTag = this.add.text(bs.x, bs.y - 52, 'VOID WRAITH', {
+        fontFamily: 'monospace', fontSize: '8px', color: '#c040ff',
+        stroke: '#000000', strokeThickness: 2, letterSpacing: 1,
+      }).setOrigin(0.5).setDepth(9000).setAlpha(0);
+      this.time.delayedCall(600, () => {
+        this.tweens.add({ targets: nameTag, alpha: 1, duration: 400 });
+        this.time.delayedCall(2500, () => this.tweens.add({ targets: nameTag, alpha: 0, duration: 600, onComplete: () => nameTag.destroy() }));
+      });
+    }
+
+    const enemyCount = Math.min(4 + this.depth * 2, 18);
     for (let i = 0; i < enemyCount; i++) {
-      // Pick a room (not start room)
-      const roomIdx = Phaser.Math.Between(1, this.rooms.length - 1);
+      let roomIdx = Phaser.Math.Between(1, lastRoomIdx);
+      // Don't pile regular enemies into boss room
+      if (this.depth >= 2 && roomIdx === lastRoomIdx) continue;
+
       const room = this.rooms[roomIdx];
       const col = room.x + Phaser.Math.Between(1, room.w - 2);
       const row = room.y + Phaser.Math.Between(1, room.h - 2);
       if (!this.isTileWalkable(col, row)) continue;
 
       const type = Math.random() < 0.55 ? 'grunt' : 'shade';
-      const enemy = new Enemy(this, col + 0.5, row + 0.5, type);
-      this.enemies.push(enemy);
+      this.enemies.push(new Enemy(this, col + 0.5, row + 0.5, type));
+    }
+  }
+
+  // ── Treasure chests ────────────────────────────────────────────────────────
+  private spawnChests() {
+    const count = Math.min(2 + Math.floor(this.depth * 0.5), 4);
+    const lastRoomIdx = this.rooms.length - 1;
+    for (let i = 0; i < count; i++) {
+      // Avoid start and exit rooms for chests
+      const roomIdx = Phaser.Math.Between(1, Math.max(1, lastRoomIdx - 1));
+      const room = this.rooms[roomIdx];
+      const col = Math.floor(room.x + room.w / 2);
+      const row = Math.floor(room.y + room.h / 2);
+      if (!this.isTileWalkable(col, row)) continue;
+      const wx = col + 0.3, wy = row + 0.3;
+      const s = this.isoToScene(wx, wy);
+      const sprite = this.add.image(s.x, s.y - 8, 'prop_chest')
+        .setDepth(depthOf(wx, wy) + 5).setScale(1.5);
+      this.chests.push({ sprite, worldX: wx, worldY: wy, opened: false });
     }
   }
 
@@ -468,6 +508,31 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
 
+    // ── Chest interaction (priority over exit) ────────────────────────────
+    let chestInteracted = false;
+    for (const chest of this.chests) {
+      if (chest.opened) continue;
+      const d = Math.hypot(px - chest.worldX, py - chest.worldY);
+      if (d < 1.1 && inp.interact) {
+        chest.opened = true;
+        chest.sprite.setTexture('prop_chest_open');
+        const embers = Phaser.Math.Between(8 + this.depth, 15 + this.depth * 2);
+        const hpHeal = Math.floor(this.player.playerStats.maxHp * 0.25);
+        this.player.playerStats.embers += embers;
+        this.player.playerStats.hp = Math.min(this.player.playerStats.maxHp, this.player.playerStats.hp + hpHeal);
+        this.events.emit('update-stats', this.player.playerStats);
+        const cs = this.isoToScene(chest.worldX, chest.worldY);
+        this.add.particles(cs.x, cs.y - 8, 'particle_ember', {
+          speed: { min: 20, max: 55 }, angle: { min: 0, max: 360 },
+          lifespan: 700, scale: { start: 1.5, end: 0 }, quantity: 12, duration: 120,
+          tint: [0xff8020, 0xffc060, 0xffd080], blendMode: Phaser.BlendModes.ADD,
+        });
+        this.showDamageNumber(chest.worldX, chest.worldY - 0.5, embers, '#ffd060');
+        chestInteracted = true;
+        break;
+      }
+    }
+
     // ── Exit proximity ────────────────────────────────────────────────────
     const exitDist = Math.hypot(px - this.exitWorldX, py - this.exitWorldY);
     const newNearExit = exitDist < 2.0;
@@ -475,7 +540,7 @@ export class DungeonScene extends Phaser.Scene {
       this.nearExit = newNearExit;
       this.events.emit('exit-prompt', newNearExit);
     }
-    if (this.nearExit && inp.interact) {
+    if (!chestInteracted && this.nearExit && inp.interact) {
       this.exitDungeon();
     }
 

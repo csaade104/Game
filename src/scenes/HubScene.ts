@@ -42,14 +42,16 @@ const MAP: number[][] = [
 ];
 
 export interface DialogueData { name: string; key: string; lines: string[]; }
+export interface ShopItemDef { label: string; desc: string; cost: number; apply: () => boolean; }
+export interface ShopOpenData { name: string; key: string; items: ShopItemDef[]; onClose: () => void; }
 
-interface NPCDef { key:string; name:string; col:number; row:number; lines:string[]; }
+interface NPCDef { key:string; name:string; col:number; row:number; lines:string[]; shopItems?: ShopItemDef[]; }
 const NPCS: NPCDef[] = [
-  { key:'npc_baelor', name:'Baelor the Forger', col:5, row:9, lines:[
-    '"I forged this blade for my daughter. She went into the dark and never came back."',
-    '"The blade remembers her hand. It will learn yours. Keep it sharp. Keep yourself sharper."',
-    '"Whatever lives below has been feeding on ember-light for years. Find it. End it."',
-  ]},
+  { key:'npc_baelor', name:'Baelor the Forger', col:5, row:9,
+    lines:[
+      '"Steel takes time. So does the warrior who wields it. Come back when you\'ve learned patience."',
+    ],
+  },
   { key:'npc_elara', name:'Elara the Scholar', col:23, row:9, lines:[
     '"The ember is not dying. It is being drained. Something below feeds on it."',
     '"I\'ve traced the ley-lines. The drain originates beneath the plaza. You must descend."',
@@ -154,6 +156,9 @@ export class HubScene extends Phaser.Scene {
     // Restore player stats if returning from dungeon
     const savedStats = this.game.registry.get('playerStats');
     if (savedStats) Object.assign(this.player.playerStats, savedStats);
+
+    // Wire shop items (closures over player stats — must happen after player created)
+    this.wireShops();
 
     // Bind UIScene events (also called when returning from dungeon)
     const ui = this.scene.get('UIScene') as any;
@@ -387,6 +392,32 @@ export class HubScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown', dismiss);
   }
 
+  // ── Shop wiring ──────────────────────────────────────────────────────────────
+  private wireShops() {
+    const p = this.player.playerStats;
+    const emit = () => this.events.emit('update-stats', p);
+
+    const baelor = NPCS.find(n => n.key === 'npc_baelor')!;
+    baelor.shopItems = [
+      { label: 'Sharpen Blade', desc: '+4 Attack', cost: 15,
+        apply: () => { if (p.embers < 15) return false; p.embers -= 15; p.attack += 4; emit(); return true; } },
+      { label: 'Temper Armor', desc: '+2 Defense', cost: 12,
+        apply: () => { if (p.embers < 12) return false; p.embers -= 12; p.defense += 2; emit(); return true; } },
+      { label: 'Forge Endurance', desc: '+20 Max Stamina', cost: 18,
+        apply: () => { if (p.embers < 18) return false; p.embers -= 18; p.maxStamina += 20; p.stamina = Math.min(p.stamina + 20, p.maxStamina); emit(); return true; } },
+    ];
+
+    const vesna = NPCS.find(n => n.key === 'npc_vesna')!;
+    vesna.shopItems = [
+      { label: 'Vitality Draught', desc: '+30 Max HP', cost: 20,
+        apply: () => { if (p.embers < 20) return false; p.embers -= 20; p.maxHp += 30; p.hp = Math.min(p.hp + 30, p.maxHp); emit(); return true; } },
+      { label: 'Ember Tincture', desc: 'Restore full HP', cost: 10,
+        apply: () => { if (p.embers < 10) return false; p.embers -= 10; p.hp = p.maxHp; emit(); return true; } },
+      { label: 'Mana Infusion', desc: '+20 Max Mana', cost: 14,
+        apply: () => { if (p.embers < 14) return false; p.embers -= 14; p.maxMana += 20; p.mana = Math.min(p.mana + 20, p.maxMana); emit(); return true; } },
+    ];
+  }
+
   // ── Public methods for UIScene ───────────────────────────────────────────────
   public closeDialogue() {
     this.dialogueOpen = false;
@@ -457,9 +488,17 @@ export class HubScene extends Phaser.Scene {
         this.enterPortal();
       } else if (this.nearNPC) {
         this.dialogueOpen = true;
-        this.events.emit('open-dialogue', {
-          name: this.nearNPC.name, key: this.nearNPC.key, lines: this.nearNPC.lines,
-        } as DialogueData);
+        if (this.nearNPC.shopItems) {
+          this.events.emit('open-shop', {
+            name: this.nearNPC.name, key: this.nearNPC.key,
+            items: this.nearNPC.shopItems,
+            onClose: () => { this.dialogueOpen = false; },
+          } as ShopOpenData);
+        } else {
+          this.events.emit('open-dialogue', {
+            name: this.nearNPC.name, key: this.nearNPC.key, lines: this.nearNPC.lines,
+          } as DialogueData);
+        }
       }
     }
 
