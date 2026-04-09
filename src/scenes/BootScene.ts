@@ -11,8 +11,317 @@ export class BootScene extends Phaser.Scene {
     this.generateUI();
     this.generateParticles();
     this.generateProps();
+    this.generateBuildings();
     document.getElementById('loading-text')?.remove();
     this.scene.start('PreloadScene');
+  }
+
+  // ── Isometric building generator ─────────────────────────────────────────
+  private makeBuilding(key: string, W: number, D: number, H: number, opts: {
+    leftCol: number; rightCol: number; roofCol: number;
+    winCol: number; stories: number;
+    roofTrim?: number;
+    detail?: (ctx: CanvasRenderingContext2D, c: Record<string,{x:number,y:number}>) => void;
+  }) {
+    const TW = 32, TH = 16;
+    const padTop = (W + D) * TH + 6;
+    const cw = (W + D) * TW;
+    const ch = padTop + H + 4;
+
+    const ct = this.textures.createCanvas(key, cw, ch);
+    const el = ct!.getSourceImage() as HTMLCanvasElement;
+    const ctx = el.getContext('2d')!;
+
+    const h = (n: number) => '#' + n.toString(16).padStart(6,'0');
+    const poly = (pts: number[][], fill: string, line = '#0a0608', lw = 1) => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.closePath();
+      ctx.fillStyle = fill; ctx.fill();
+      ctx.strokeStyle = line; ctx.lineWidth = lw; ctx.stroke();
+    };
+
+    // Corner positions
+    const fGx = D*TW, fGy = padTop + H;
+    const lGx = fGx+W*TW, lGy = fGy-W*TH;
+    const rGx = fGx-D*TW, rGy = fGy-D*TH;
+    const bGx = fGx+(W-D)*TW, bGy = fGy-(W+D)*TH;
+    const fTy = fGy-H, lTy = lGy-H, rTy = rGy-H, bTy = bGy-H;
+
+    // Left face (visible south-west wall)
+    poly([[fGx,fGy],[lGx,lGy],[lGx,lTy],[fGx,fTy]], h(opts.leftCol));
+    // Stone course lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+    for (let s = 1; s < opts.stories; s++) {
+      const v = s / opts.stories;
+      const y0 = fGy - v*H, y1 = lGy - v*H;
+      ctx.beginPath(); ctx.moveTo(fGx, y0); ctx.lineTo(lGx, y1); ctx.stroke();
+    }
+    // Left face windows
+    for (let s = 0; s < opts.stories; s++) {
+      const nw = Math.max(1, W - 1);
+      for (let w = 0; w < nw; w++) {
+        const u = (w + 0.5) / nw;
+        const v = 1 - (s + 0.6) / opts.stories;
+        const wx = fGx + u*W*TW, wy = fGy - u*W*TH - v*H;
+        const ww = 5, wh = 7;
+        // parallelogram window matching face slope (-0.5)
+        ctx.beginPath();
+        ctx.moveTo(wx-ww, wy+wh+ww*0.5); ctx.lineTo(wx+ww, wy+wh-ww*0.5);
+        ctx.lineTo(wx+ww, wy-wh-ww*0.5); ctx.lineTo(wx-ww, wy-wh+ww*0.5);
+        ctx.closePath();
+        ctx.fillStyle = h(opts.winCol); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,220,120,0.25)'; ctx.lineWidth = 0.5; ctx.stroke();
+        // inner glow dot
+        ctx.fillStyle = 'rgba(255,255,200,0.4)';
+        ctx.fillRect(wx-1, wy-2, 2, 2);
+      }
+    }
+    // Left face edge outline
+    ctx.strokeStyle = '#08040a'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(fGx,fGy); ctx.lineTo(lGx,lGy); ctx.lineTo(lGx,lTy); ctx.lineTo(fGx,fTy); ctx.closePath(); ctx.stroke();
+
+    // Right face (visible south-east wall, darker)
+    poly([[fGx,fGy],[rGx,rGy],[rGx,rTy],[fGx,fTy]], h(opts.rightCol));
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+    for (let s = 1; s < opts.stories; s++) {
+      const v = s / opts.stories;
+      ctx.beginPath(); ctx.moveTo(fGx, fGy-v*H); ctx.lineTo(rGx, rGy-v*H); ctx.stroke();
+    }
+    for (let s = 0; s < opts.stories; s++) {
+      const nw = Math.max(1, D - 1);
+      for (let w = 0; w < nw; w++) {
+        const u = (w + 0.5) / nw;
+        const v = 1 - (s + 0.6) / opts.stories;
+        const wx = fGx - u*D*TW, wy = fGy - u*D*TH - v*H;
+        const ww = 5, wh = 7;
+        ctx.beginPath();
+        ctx.moveTo(wx-ww, wy+wh-ww*0.5); ctx.lineTo(wx+ww, wy+wh+ww*0.5);
+        ctx.lineTo(wx+ww, wy-wh+ww*0.5); ctx.lineTo(wx-ww, wy-wh-ww*0.5);
+        ctx.closePath();
+        ctx.fillStyle = h(opts.winCol >> 1 & 0x7f7f7f | opts.winCol & 0x808080); ctx.fill();
+      }
+    }
+    ctx.strokeStyle = '#08040a'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(fGx,fGy); ctx.lineTo(rGx,rGy); ctx.lineTo(rGx,rTy); ctx.lineTo(fGx,fTy); ctx.closePath(); ctx.stroke();
+
+    // Roof
+    poly([[fGx,fTy],[lGx,lTy],[bGx,bTy],[rGx,rTy]], h(opts.roofCol), '#08040a');
+    // Roof trim highlight
+    const trim = opts.roofTrim ?? opts.roofCol;
+    ctx.strokeStyle = h(trim); ctx.lineWidth = 1.5; ctx.globalAlpha = 0.45;
+    ctx.beginPath(); ctx.moveTo(fGx,fTy); ctx.lineTo(lGx,lTy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(fGx,fTy); ctx.lineTo(rGx,rTy); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Custom detail callback
+    const corners = {fG:{x:fGx,y:fGy},lG:{x:lGx,y:lGy},rG:{x:rGx,y:rGy},bG:{x:bGx,y:bGy},
+                     fT:{x:fGx,y:fTy},lT:{x:lGx,y:lTy},rT:{x:rGx,y:rTy},bT:{x:bGx,y:bTy}};
+    if (opts.detail) opts.detail(ctx, corners);
+
+    ct!.refresh();
+  }
+
+  private generateBuildings() {
+    // ── FORGE (Baelor) — dark stone, fire-orange glow ─────────────────────
+    this.makeBuilding('bld_forge', 4, 4, 80, {
+      leftCol:0x2e2420, rightCol:0x201a18, roofCol:0x1a1210, roofTrim:0x5a3820,
+      winCol:0xff6020, stories:2,
+      detail(ctx, c) {
+        // Chimney on left face top
+        ctx.fillStyle = '#1a1010';
+        ctx.fillRect(c.lG.x-18, c.lT.y-24, 10, 24);
+        ctx.fillStyle = '#2a1818'; ctx.fillRect(c.lG.x-20, c.lT.y-26, 14, 4);
+        // Forge glow above chimney
+        ctx.fillStyle = 'rgba(255,90,10,0.35)';
+        ctx.beginPath(); ctx.ellipse(c.lG.x-13, c.lT.y-28, 7, 5, 0, 0, Math.PI*2); ctx.fill();
+        // Roof anvil silhouette
+        const ax = (c.fT.x+c.bT.x)/2+4, ay = c.fT.y-6;
+        ctx.fillStyle = '#0a0608'; ctx.fillRect(ax-5, ay-3, 10, 3); ctx.fillRect(ax-3, ay-7, 6, 4);
+        // Door arch left face
+        const dx = c.fG.x + 0.2*4*32, dy = c.fG.y - 0.2*4*16;
+        ctx.fillStyle = '#0a0408';
+        ctx.beginPath(); ctx.ellipse(dx, dy-5, 4, 6, 0, Math.PI, 0); ctx.fill();
+        ctx.fillRect(dx-4, dy-5, 8, 5);
+      }
+    });
+
+    // ── ACADEMY (Elara) — deep purple stone, blue glow ────────────────────
+    this.makeBuilding('bld_academy', 4, 4, 104, {
+      leftCol:0x20182e, rightCol:0x16101e, roofCol:0x100c18, roofTrim:0x4040a0,
+      winCol:0x4060ff, stories:3,
+      detail(ctx, c) {
+        // Tower spire from roof center
+        const mx = (c.fT.x+c.bT.x)/2, my = Math.min(c.lT.y,c.rT.y);
+        ctx.fillStyle = '#181020';
+        ctx.beginPath(); ctx.moveTo(mx, my-28); ctx.lineTo(mx-6, my); ctx.lineTo(mx+6, my); ctx.fill();
+        ctx.fillStyle = 'rgba(80,100,255,0.35)';
+        ctx.beginPath(); ctx.ellipse(mx, my-28, 4, 4, 0, 0, Math.PI*2); ctx.fill();
+        // Moon window on upper left face
+        const wx = c.fG.x + 0.5*4*32, wy = c.fG.y - 0.5*4*16 - 0.85*104;
+        ctx.fillStyle = '#3050c0';
+        ctx.beginPath(); ctx.arc(wx, wy-2, 6, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#6080ff'; ctx.beginPath(); ctx.arc(wx, wy-2, 4, 0, Math.PI*2); ctx.fill();
+      }
+    });
+
+    // ── TAVERN (Mira) — warm wood, amber windows ──────────────────────────
+    this.makeBuilding('bld_tavern', 4, 4, 72, {
+      leftCol:0x3e2a18, rightCol:0x2a1c0e, roofCol:0x241508, roofTrim:0x6a3818,
+      winCol:0xffb030, stories:2,
+      detail(ctx, c) {
+        // Hanging sign
+        const sx = c.fT.x + 0.15*4*32, sy = c.fT.y + 24;
+        ctx.fillStyle = '#3a1e0a'; ctx.fillRect(sx-14, sy, 28, 14);
+        ctx.strokeStyle = '#6a3818'; ctx.lineWidth = 1; ctx.strokeRect(sx-14, sy, 28, 14);
+        ctx.fillStyle = '#d09030'; ctx.font = '5px monospace';
+        ctx.fillText('TAVERN', sx-11, sy+9);
+        // Sign post
+        ctx.strokeStyle = '#2a1208'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(sx, c.fT.y+8); ctx.lineTo(sx, sy); ctx.stroke();
+        // Barrel by door
+        const bx = c.fG.x + 0.1*4*32 - 4, by = c.fG.y - 0.1*4*16;
+        ctx.fillStyle = '#4a2a10'; ctx.fillRect(bx, by-10, 8, 10);
+        ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 1;
+        [by-3, by-7].forEach(y => { ctx.beginPath(); ctx.moveTo(bx, y); ctx.lineTo(bx+8, y); ctx.stroke(); });
+      }
+    });
+
+    // ── CLOCKTOWER (Orin) — tall stone, lantern top ───────────────────────
+    this.makeBuilding('bld_clocktower', 2, 2, 144, {
+      leftCol:0x28222e, rightCol:0x1c1820, roofCol:0x141018, roofTrim:0x6a6080,
+      winCol:0x90a0c0, stories:4,
+      detail(ctx, c) {
+        // Clock face on left face
+        const cfx = c.fG.x + 0.5*2*32, cfy = c.fG.y - 0.5*2*16 - 0.75*144;
+        ctx.fillStyle = '#0c0c14'; ctx.beginPath(); ctx.arc(cfx, cfy, 9, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#a090c0'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cfx, cfy, 9, 0, Math.PI*2); ctx.stroke();
+        ctx.strokeStyle = '#c0b0e0'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(cfx, cfy); ctx.lineTo(cfx, cfy-6); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cfx, cfy); ctx.lineTo(cfx+5, cfy); ctx.stroke();
+        // Spire
+        const sx = (c.fT.x+c.bT.x)/2, sy = Math.min(c.lT.y, c.rT.y);
+        ctx.fillStyle = '#20181e';
+        ctx.beginPath(); ctx.moveTo(sx, sy-36); ctx.lineTo(sx-5, sy); ctx.lineTo(sx+5, sy); ctx.fill();
+        ctx.fillStyle = 'rgba(180,160,255,0.6)';
+        ctx.beginPath(); ctx.arc(sx, sy-36, 3, 0, Math.PI*2); ctx.fill();
+        // Battlements on roof
+        for (let b = 0; b < 3; b++) {
+          const t = (b+0.5)/3;
+          const bx = c.fT.x + t*(c.lT.x-c.fT.x), by = c.fT.y + t*(c.lT.y-c.fT.y);
+          ctx.fillStyle = '#1a1420'; ctx.fillRect(bx-2, by-5, 4, 5);
+        }
+      }
+    });
+
+    // ── SHRINE (Cael) — ember-glow, ornate ───────────────────────────────
+    this.makeBuilding('bld_shrine', 4, 3, 72, {
+      leftCol:0x2a1e1a, rightCol:0x1c1410, roofCol:0x180c08, roofTrim:0xff4010,
+      winCol:0xff5010, stories:2,
+      detail(ctx, c) {
+        // Ember flame at roof peak
+        const ex = (c.fT.x+c.bT.x)/2, ey = Math.min(c.lT.y, c.rT.y);
+        ctx.fillStyle = 'rgba(255,80,10,0.7)';
+        ctx.beginPath(); ctx.moveTo(ex, ey-16); ctx.lineTo(ex-5, ey); ctx.lineTo(ex+5, ey); ctx.fill();
+        ctx.fillStyle = 'rgba(255,160,40,0.6)';
+        ctx.beginPath(); ctx.moveTo(ex, ey-10); ctx.lineTo(ex-3, ey); ctx.lineTo(ex+3, ey); ctx.fill();
+        // Arch window top left face
+        const ax = c.fG.x + 0.5*4*32, ay = c.fG.y - 0.5*4*16 - 0.7*72;
+        ctx.fillStyle = '#ff5010';
+        ctx.beginPath(); ctx.arc(ax, ay-3, 5, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = '#ff8040'; ctx.fillRect(ax-5, ay-3, 10, 5);
+      }
+    });
+
+    // ── GATEHOUSE (Joren) — heavy stone arch ─────────────────────────────
+    this.makeBuilding('bld_gatehouse', 6, 3, 64, {
+      leftCol:0x2a2428, rightCol:0x1c181e, roofCol:0x181418, roofTrim:0x504858,
+      winCol:0x8090a0, stories:2,
+      detail(ctx, c) {
+        // Gate arch on left face
+        const gx = c.fG.x + 0.5*6*32, gy = c.fG.y - 0.5*6*16;
+        ctx.fillStyle = '#080408';
+        ctx.beginPath(); ctx.arc(gx, gy-12, 10, Math.PI, 0); ctx.fill();
+        ctx.fillRect(gx-10, gy-12, 20, 12);
+        ctx.strokeStyle = '#3a3040'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(gx, gy-12, 10, Math.PI, 0); ctx.stroke();
+        // Battlements
+        for (let b = 0; b < 5; b++) {
+          const t = (b+0.5)/5;
+          const bx = c.fT.x + t*(c.lT.x-c.fT.x), by = c.fT.y + t*(c.lT.y-c.fT.y);
+          ctx.fillStyle = '#181220'; ctx.fillRect(bx-2, by-6, 4, 6);
+        }
+        // Torches
+        [0.2, 0.8].forEach(t => {
+          const tx = c.fT.x + t*(c.lT.x-c.fT.x)+2, ty = c.fT.y + t*(c.lT.y-c.fT.y);
+          ctx.fillStyle = '#5a3010'; ctx.fillRect(tx-1, ty, 2, 6);
+          ctx.fillStyle = '#ff8020'; ctx.fillRect(tx-2, ty-4, 4, 4);
+          ctx.fillStyle = 'rgba(255,160,40,0.4)';
+          ctx.beginPath(); ctx.arc(tx, ty-4, 5, 0, Math.PI*2); ctx.fill();
+        });
+      }
+    });
+
+    // ── TAILOR (Theo) — green-trim wood ──────────────────────────────────
+    this.makeBuilding('bld_tailor', 4, 4, 68, {
+      leftCol:0x2e2418, rightCol:0x201810, roofCol:0x1c1008, roofTrim:0x405820,
+      winCol:0xa0d060, stories:2,
+      detail(ctx, c) {
+        // Green awning
+        const ax = c.fG.x + 0.5*4*32, ay = c.fG.y - 0.5*4*16 - 0.35*68;
+        ctx.fillStyle = '#2a4010';
+        ctx.beginPath(); ctx.moveTo(ax-18, ay-2); ctx.lineTo(ax+18, ay-2+(-3)); ctx.lineTo(ax+18, ay+6-3); ctx.lineTo(ax-18, ay+6); ctx.fill();
+        ctx.strokeStyle = '#405820'; ctx.lineWidth = 0.5; ctx.stroke();
+        // Mannequin silhouette in window
+        const mx = c.fG.x + 0.5*4*32 - 4, my = c.fG.y - 0.5*4*16 - 0.6*68;
+        ctx.fillStyle = '#0a0a0a'; ctx.fillRect(mx-2, my-6, 4, 8); // torso
+        ctx.beginPath(); ctx.arc(mx, my-8, 3, 0, Math.PI*2); ctx.fill(); // head
+      }
+    });
+
+    // ── APOTHECARY (Vesna) — green stone, herb glow ───────────────────────
+    this.makeBuilding('bld_apothecary', 4, 4, 68, {
+      leftCol:0x182820, rightCol:0x101c14, roofCol:0x0c140e, roofTrim:0x204820,
+      winCol:0x40c060, stories:2,
+      detail(ctx, c) {
+        // Hanging herb bundles
+        [0.25, 0.65].forEach(t => {
+          const hx = c.fT.x + t*(c.lT.x-c.fT.x), hy = c.fT.y + t*(c.lT.y-c.fT.y) + 8;
+          ctx.strokeStyle = '#2a4018'; ctx.lineWidth = 0.5;
+          for (let i = 0; i < 3; i++) {
+            ctx.beginPath(); ctx.moveTo(hx+i*3-3, hy); ctx.lineTo(hx+i*3-2, hy+8); ctx.stroke();
+          }
+          ctx.fillStyle = '#204818'; ctx.fillRect(hx-4, hy-1, 8, 2);
+        });
+        // Green glow from door
+        const dx = c.fG.x + 0.15*4*32, dy = c.fG.y - 0.15*4*16;
+        ctx.fillStyle = 'rgba(60,180,80,0.2)';
+        ctx.beginPath(); ctx.ellipse(dx, dy, 12, 6, 0, 0, Math.PI*2); ctx.fill();
+      }
+    });
+
+    // ── Lantern post (standalone prop) ────────────────────────────────────
+    {
+      const ct = this.textures.createCanvas('prop_lantern_post', 16, 48);
+      const el = ct!.getSourceImage() as HTMLCanvasElement;
+      const ctx = el.getContext('2d')!;
+      // Post
+      ctx.fillStyle = '#2a1c10'; ctx.fillRect(7, 14, 3, 34);
+      // Base
+      ctx.fillStyle = '#1a1008'; ctx.fillRect(4, 42, 9, 6);
+      // Lantern housing
+      ctx.fillStyle = '#3a2818'; ctx.fillRect(4, 4, 9, 12);
+      ctx.strokeStyle = '#5a4028'; ctx.lineWidth = 0.8; ctx.strokeRect(4, 4, 9, 12);
+      // Glass pane glow
+      ctx.fillStyle = '#ffc060'; ctx.fillRect(5, 5, 7, 10);
+      // Flame center
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(7, 6, 3, 4);
+      // Outer glow
+      ctx.fillStyle = 'rgba(255,180,60,0.3)';
+      ctx.beginPath(); ctx.arc(8, 10, 10, 0, Math.PI*2); ctx.fill();
+      ct!.refresh();
+    }
   }
 
   private g(): Phaser.GameObjects.Graphics {

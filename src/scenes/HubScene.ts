@@ -43,14 +43,26 @@ const MAP: number[][] = [
 
 interface NPCDef { key:string; name:string; col:number; row:number; greeting:string; }
 const NPCS: NPCDef[] = [
-  { key:'npc_baelor', name:'Baelor the Forger',  col:6,  row:5,  greeting:'"I forged this for my daughter. She went into the dark and never came back. The blade remembers her hand — it will learn yours."' },
-  { key:'npc_elara',  name:'Elara the Scholar',  col:23, row:5,  greeting:'"The ember is not dying. It is being drained. Something below feeds on it. Find it. Stop it. That is your charge."' },
-  { key:'npc_mira',   name:'Mira of the Lamp',   col:6,  row:13, greeting:'"I have kept this tavern open through two wars and a plague. I will keep it open through this too. Drink. You look pale."' },
-  { key:'npc_orin',   name:'Orin the Timekeeper',col:23, row:13, greeting:'"Time is a circle, wanderer. We have been here before. We will be here again. The question is whether we survive the loop."' },
-  { key:'npc_theo',   name:'Theo the Tailor',    col:6,  row:19, greeting:'"A fine cloak on a wanderer is not vanity. It is armor for the soul. Let the dark see you and know you are not afraid."' },
-  { key:'npc_vesna',  name:'Vesna the Herbalist', col:23, row:19, greeting:'"My herbs grow strange in the dark now. But strange is not useless. The draught I make from them burns like ember-fire in the blood."' },
-  { key:'npc_cael',   name:'Brother Cael',        col:15, row:25, greeting:'"The Flame asks only one thing: do not let it go out. Everything else — your life, your fear, your past — is secondary."' },
-  { key:'npc_joren',  name:'Captain Joren',       col:15, row:3,  greeting:'"The wall holds. The gate holds. But for how long? Every night the dark presses closer. Go below. Find the source. End this."' },
+  { key:'npc_baelor', name:'Baelor the Forger',  col:5,  row:9,  greeting:'"I forged this for my daughter. She went into the dark and never came back. The blade remembers her hand — it will learn yours."' },
+  { key:'npc_elara',  name:'Elara the Scholar',  col:23, row:9,  greeting:'"The ember is not dying. It is being drained. Something below feeds on it. Find it. Stop it. That is your charge."' },
+  { key:'npc_mira',   name:'Mira of the Lamp',   col:5,  row:17, greeting:'"I have kept this tavern open through two wars and a plague. I will keep it open through this too. Drink. You look pale."' },
+  { key:'npc_orin',   name:'Orin the Timekeeper',col:23, row:16, greeting:'"Time is a circle, wanderer. We have been here before. We will be here again. The question is whether we survive the loop."' },
+  { key:'npc_theo',   name:'Theo the Tailor',    col:5,  row:23, greeting:'"A fine cloak on a wanderer is not vanity. It is armor for the soul. Let the dark see you and know you are not afraid."' },
+  { key:'npc_vesna',  name:'Vesna the Herbalist', col:23, row:23, greeting:'"My herbs grow strange in the dark now. But strange is not useless. The draught I make from them burns like ember-fire in the blood."' },
+  { key:'npc_cael',   name:'Brother Cael',        col:15, row:26, greeting:'"The Flame asks only one thing: do not let it go out. Everything else — your life, your fear, your past — is secondary."' },
+  { key:'npc_joren',  name:'Captain Joren',       col:15, row:6,  greeting:'"The wall holds. The gate holds. But for how long? Every night the dark presses closer. Go below. Find the source. End this."' },
+];
+
+interface BldDef { key:string; col:number; row:number; W:number; D:number; H:number; }
+const BUILDINGS: BldDef[] = [
+  { key:'bld_forge',      col:4,  row:4,  W:4, D:4, H:80  },
+  { key:'bld_academy',    col:21, row:4,  W:4, D:4, H:104 },
+  { key:'bld_tavern',     col:4,  row:12, W:4, D:4, H:72  },
+  { key:'bld_clocktower', col:22, row:13, W:2, D:2, H:144 },
+  { key:'bld_tailor',     col:4,  row:18, W:4, D:4, H:68  },
+  { key:'bld_apothecary', col:21, row:18, W:4, D:4, H:68  },
+  { key:'bld_shrine',     col:13, row:23, W:4, D:3, H:72  },
+  { key:'bld_gatehouse',  col:12, row:3,  W:6, D:3, H:64  },
 ];
 
 export class HubScene extends Phaser.Scene {
@@ -87,6 +99,8 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.setZoom(1.6);
 
     this.buildGround();
+    this.buildBuildings();
+    this.buildLanterns();
     this.buildPortal();
     this.buildNPCs();
     this.buildAtmosphere();
@@ -150,10 +164,63 @@ export class HubScene extends Phaser.Scene {
       case T.COBBLE: return 'tile_cobble';
       case T.PATH:   return 'tile_path';
       case T.DIRT:   return 'tile_dirt';
-      case T.WALL:   return 'tile_wall';
+      case T.WALL:   return 'tile_cobble'; // buildings rendered as 3D sprites; ground = cobble
       case T.EMBER:  return 'tile_ember';
       case T.WATER:  return 'tile_water';
       default:       return 'tile_cobble';
+    }
+  }
+
+  // ── Buildings ──────────────────────────────────────────────────────────────
+  private buildBuildings() {
+    const TW = TILE_HALF_W, TH = TILE_HALF_H;
+    for (const b of BUILDINGS) {
+      // Front vertex of building footprint in scene coords
+      const front = this.isoToScene(b.col + b.W, b.row + b.D);
+      const cw = (b.W + b.D) * TW;
+      const padTop = (b.W + b.D) * TH + 6;
+      const ch = padTop + b.H + 4;
+      // Origin at the front-ground corner of the canvas
+      const img = this.add.image(front.x, front.y, b.key)
+        .setOrigin(b.D * TW / cw, (padTop + b.H) / ch)
+        .setDepth(depthOf(b.col + b.W, b.row + b.D));
+      // Subtle ground shadow beneath building
+      const shadow = this.add.graphics().setDepth(DEPTH.GROUND + 2);
+      shadow.fillStyle(0x000000, 0.22);
+      shadow.fillEllipse(front.x, front.y - 4, (b.W+b.D) * TW * 0.9, (b.W+b.D) * TH * 0.9);
+      void img;
+    }
+  }
+
+  // ── Lanterns ───────────────────────────────────────────────────────────────
+  private buildLanterns() {
+    // Place lantern posts along the main paths
+    const lanternPositions = [
+      [8, 9],[8, 15],[8, 21],         // left path
+      [20, 9],[20, 15],[20, 21],      // right path
+      [14, 3],[16, 3],                // north gate approach
+      [14, 25],[16, 25],              // south shrine approach
+      [11, 12],[11, 15],[17, 12],[17, 15], // inner plaza corners
+    ];
+    for (const [col, row] of lanternPositions) {
+      const s = this.isoToScene(col, row);
+      const post = this.add.image(s.x, s.y - 8, 'prop_lantern_post')
+        .setDepth(depthOf(col, row) + 15).setScale(1.2);
+      // Warm glow beneath lantern
+      const glow = this.add.image(s.x, s.y - 30, 'light_radial')
+        .setDepth(depthOf(col, row) + 14)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setScale(0.35).setTint(0xffc060).setAlpha(0.55);
+      this.tweens.add({ targets: glow, alpha: 0.3, scaleX: 0.32, scaleY: 0.32,
+        duration: 1800 + Math.random()*600, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      this.add.particles(s.x, s.y - 36, 'particle_ember', {
+        speed: { min: 3, max: 8 }, angle: { min: 260, max: 280 },
+        lifespan: { min: 600, max: 1400 }, scale: { start: 0.7, end: 0 },
+        alpha: { start: 0.7, end: 0 }, frequency: 400, quantity: 1,
+        tint: [0xffc060, 0xff9030],
+        blendMode: Phaser.BlendModes.ADD,
+      }).setDepth(depthOf(col, row) + 16);
+      void post;
     }
   }
 
