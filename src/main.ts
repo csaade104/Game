@@ -8,8 +8,6 @@ import { UIScene } from './scenes/UIScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: GAME_W,
-  height: GAME_H,
   backgroundColor: '#0a0608',
   pixelArt: true,
   antialias: false,
@@ -17,7 +15,7 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',
   scene: [BootScene, PreloadScene, TitleScene, HubScene, UIScene],
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.EXPAND,   // fills screen edge-to-edge, no black bars
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: GAME_W,
     height: GAME_H,
@@ -27,17 +25,12 @@ const config: Phaser.Types.Core.GameConfig = {
     antialias: false,
     antialiasGL: false,
   },
-  audio: {
-    disableWebAudio: false,
-  },
 };
 
 const game = new Phaser.Game(config);
 
-// Prevent context menu on right-click
-window.addEventListener('contextmenu', (e) => e.preventDefault());
-
-// Prevent pull-to-refresh on mobile
-document.body.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+// Prevent context menu and pull-to-refresh
+window.addEventListener('contextmenu', e => e.preventDefault());
+document.body.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
 export default game;

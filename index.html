@@ -6,30 +6,46 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="screen-orientation" content="landscape" />
   <title>EMBERHOLD</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    html, body {
-      width: 100%; height: 100%;
+    html {
+      height: 100%;
+      height: -webkit-fill-available;
+    }
+
+    body {
+      width: 100%;
+      min-height: 100%;
+      min-height: -webkit-fill-available;
       background: #0a0608;
       overflow: hidden;
       touch-action: none;
-      -webkit-user-select: none; user-select: none;
+      -webkit-user-select: none;
+      user-select: none;
+      /* fill behind notch/island on iPhone */
+      padding: env(safe-area-inset-top) env(safe-area-inset-right)
+               env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
 
     #game-container {
-      width: 100%; height: 100%;
-      display: flex; align-items: center; justify-content: center;
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0a0608;
     }
 
     canvas {
       display: block;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
-      max-width: 100%;
-      max-height: 100%;
+      /* fill the container completely */
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain;
     }
 
     #loading-text {
@@ -40,48 +56,32 @@
       text-transform: uppercase;
       animation: pulse 1.5s ease-in-out infinite;
       white-space: nowrap;
+      pointer-events: none;
     }
     @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
 
-    /* Rotate overlay — shows in portrait mode */
-    #rotate-overlay {
+    /* Portrait hint — just a small banner, doesn't block the game */
+    #rotate-hint {
       display: none;
-      position: fixed; inset: 0; z-index: 9999;
-      background: #0a0608;
-      flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 20px;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #1a0a08ee;
+      color: #ff6b35;
+      font-family: monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-align: center;
+      padding: 6px;
+      z-index: 9999;
+      pointer-events: none;
     }
-    #rotate-overlay svg {
-      animation: spin 2s ease-in-out infinite alternate;
-    }
-    @keyframes spin {
-      from { transform: rotate(-20deg); }
-      to   { transform: rotate(20deg); }
-    }
-    #rotate-overlay p {
-      color: #ff6b35; font-family: monospace;
-      font-size: 14px; letter-spacing: 3px;
-      text-transform: uppercase; text-align: center;
-    }
-
     @media (orientation: portrait) {
-      #rotate-overlay { display: flex; }
+      #rotate-hint { display: block; }
     }
   </style>
 </head>
 <body>
-
-  <!-- Rotate prompt (portrait only) -->
-  <div id="rotate-overlay">
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-      <rect x="16" y="8" width="32" height="48" rx="4" stroke="#ff6b35" stroke-width="2" fill="none"/>
-      <rect x="20" y="12" width="24" height="36" fill="#1a0d1f" rx="2"/>
-      <path d="M44 28 L52 20 L44 12" stroke="#ff6b35" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <path d="M52 20 L20 20" stroke="#ff6b35" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-    <p>Rotate to Landscape<br/>to play EMBERHOLD</p>
-  </div>
+  <div id="rotate-hint">↻ ROTATE DEVICE FOR BEST EXPERIENCE</div>
 
   <div id="game-container">
     <div id="loading-text">Kindling the ember...</div>
@@ -90,9 +90,22 @@
   <script type="module" src="/src/main.ts"></script>
 
   <script>
-    // Try to lock orientation to landscape
-    if (screen.orientation && screen.orientation.lock) {
+    // Lock to landscape where supported (Android Chrome)
+    if (screen.orientation?.lock) {
       screen.orientation.lock('landscape').catch(() => {});
+    }
+
+    // Request fullscreen on first touch — hides browser chrome on Android
+    // iOS Safari doesn't support fullscreen for web pages, so we skip it there
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (!isIOS) {
+      const requestFS = () => {
+        const el = document.documentElement;
+        if (el.requestFullscreen) el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      };
+      document.addEventListener('touchstart', requestFS, { once: true });
+      document.addEventListener('click', requestFS, { once: true });
     }
   </script>
 </body>

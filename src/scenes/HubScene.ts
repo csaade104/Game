@@ -86,10 +86,10 @@ export class HubScene extends Phaser.Scene {
     this.mapH = (HUB_COLS + HUB_ROWS) * TILE_HALF_H;
     this.mapOX = -(this.mapW / 2) + TILE_HALF_W;
     this.mapOY = -(this.mapH / 4);
-    this.joyBaseY = GAME_H - 60;
+    this.joyBaseY = this.scale.height - 60;
 
     this.cameras.main.setBounds(
-      this.mapOX - GAME_W / 2, this.mapOY - GAME_H / 2,
+      this.mapOX - GAME_W / 2, this.mapOY - this.scale.height / 2,
       this.mapW + GAME_W, this.mapH + GAME_H
     );
     this.cameras.main.setZoom(1.6);
@@ -296,7 +296,7 @@ export class HubScene extends Phaser.Scene {
       'Descend. Rekindle it. Before everything ends.',
     ];
 
-    const textObj = this.add.text(GAME_W / 2, GAME_H / 2 - 20, '', {
+    const textObj = this.add.text(GAME_W / 2, this.scale.height / 2 - 20, '', {
       fontFamily: 'monospace', fontSize: '7px', color: '#e8d5b0',
       align: 'center', wordWrap: { width: GAME_W - 60 }, lineSpacing: 4,
     }).setOrigin(0.5);
@@ -346,16 +346,16 @@ export class HubScene extends Phaser.Scene {
       .setScrollFactor(0).setDepth(2001).setAlpha(0.9);
 
     // Attack button (bottom-right)
-    this.atkBtn = this.add.image(GAME_W - 48, GAME_H - 48, 'btn_attack')
+    this.atkBtn = this.add.image(this.scale.width - 48, this.scale.height - 48, 'btn_attack')
       .setScrollFactor(0).setDepth(2000).setAlpha(0.85);
-    this.add.text(GAME_W - 48, GAME_H - 70, 'ATTACK', {
+    this.add.text(this.scale.width - 48, this.scale.height - 70, 'ATTACK', {
       fontFamily: 'monospace', fontSize: '5px', color: '#ff6b35',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(2000).setAlpha(0.7);
 
     // Interact button
-    this.itrBtn = this.add.image(GAME_W - 95, GAME_H - 40, 'btn_interact')
+    this.itrBtn = this.add.image(this.scale.width - 95, this.scale.height - 40, 'btn_interact')
       .setScrollFactor(0).setDepth(2000).setAlpha(0.85);
-    this.add.text(GAME_W - 95, GAME_H - 60, 'TALK', {
+    this.add.text(this.scale.width - 95, this.scale.height - 60, 'TALK', {
       fontFamily: 'monospace', fontSize: '5px', color: '#6ab0e8',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(2000).setAlpha(0.7);
 
@@ -363,12 +363,12 @@ export class HubScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       // Joystick zone: left 45% of screen
-      if (p.x < GAME_W * 0.45 && this.joyPointerID === -1) {
+      if (p.x < this.scale.width * 0.45 && this.joyPointerID === -1) {
         this.joyPointerID = p.id;
       }
       // Attack button zone: right side, bottom
-      if (p.x > GAME_W * 0.55 && p.y > GAME_H * 0.55) {
-        if (p.x > GAME_W - 90) {
+      if (p.x > this.scale.width * 0.55 && p.y > this.scale.height * 0.55) {
+        if (p.x > this.scale.width - 90) {
           this.inputMgr.joystickAttack = true;
           this.time.delayedCall(120, () => { this.inputMgr.joystickAttack = false; });
           this.tweens.add({ targets: this.atkBtn, scaleX: 0.85, scaleY: 0.85, duration: 80, yoyo: true });

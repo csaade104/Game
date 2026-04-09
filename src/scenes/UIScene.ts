@@ -78,14 +78,14 @@ export class UIScene extends Phaser.Scene {
     // ── Embers (top-right) ───────────────────────────────────────────────
     const ep = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.HUD);
     ep.fillStyle(0x080508, 0.82);
-    ep.fillRoundedRect(GAME_W - 70, pad - 4, 64, 22, 4);
+    ep.fillRoundedRect(this.scale.width - 70, pad - 4, 64, 22, 4);
     ep.lineStyle(1.5, PALETTE.EMBER_DEEP, 0.7);
-    ep.strokeRoundedRect(GAME_W - 70, pad - 4, 64, 22, 4);
+    ep.strokeRoundedRect(this.scale.width - 70, pad - 4, 64, 22, 4);
 
-    this.emberGlow = this.add.image(GAME_W - 60, pad + 7, 'icon_ember')
+    this.emberGlow = this.add.image(this.scale.width - 60, pad + 7, 'icon_ember')
       .setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    this.emberText = this.add.text(GAME_W - 46, pad + 1, '0', {
+    this.emberText = this.add.text(this.scale.width - 46, pad + 1, '0', {
       fontFamily: 'monospace', fontSize: '9px', color: '#ffd166',
     }).setScrollFactor(0).setDepth(DEPTH.HUD);
 
