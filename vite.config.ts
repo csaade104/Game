@@ -6,9 +6,10 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     rollupOptions: {
+      external: ['phaser'],
       output: {
-        manualChunks: {
-          phaser: ['phaser']
+        globals: {
+          phaser: 'Phaser'
         }
       }
     }
