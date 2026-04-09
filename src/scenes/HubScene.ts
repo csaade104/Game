@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_W, GAME_H, TILE_W, TILE_H, TILE_HALF_W, TILE_HALF_H, HUB_COLS, HUB_ROWS, DEPTH, CAM_LERP } from '../config';
+import { TILE_W, TILE_H, TILE_HALF_W, TILE_HALF_H, HUB_COLS, HUB_ROWS, DEPTH, CAM_LERP } from '../config';
 import { gridToScreen, depthOf } from '../utils/IsoMath';
 import { PALETTE } from '../utils/ColorPalette';
 import { Player } from '../entities/Player';
@@ -41,16 +41,48 @@ const MAP: number[][] = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
 ];
 
-interface NPCDef { key:string; name:string; col:number; row:number; greeting:string; }
+export interface DialogueData { name: string; key: string; lines: string[]; }
+
+interface NPCDef { key:string; name:string; col:number; row:number; lines:string[]; }
 const NPCS: NPCDef[] = [
-  { key:'npc_baelor', name:'Baelor the Forger',  col:5,  row:9,  greeting:'"I forged this for my daughter. She went into the dark and never came back. The blade remembers her hand — it will learn yours."' },
-  { key:'npc_elara',  name:'Elara the Scholar',  col:23, row:9,  greeting:'"The ember is not dying. It is being drained. Something below feeds on it. Find it. Stop it. That is your charge."' },
-  { key:'npc_mira',   name:'Mira of the Lamp',   col:5,  row:17, greeting:'"I have kept this tavern open through two wars and a plague. I will keep it open through this too. Drink. You look pale."' },
-  { key:'npc_orin',   name:'Orin the Timekeeper',col:23, row:16, greeting:'"Time is a circle, wanderer. We have been here before. We will be here again. The question is whether we survive the loop."' },
-  { key:'npc_theo',   name:'Theo the Tailor',    col:5,  row:23, greeting:'"A fine cloak on a wanderer is not vanity. It is armor for the soul. Let the dark see you and know you are not afraid."' },
-  { key:'npc_vesna',  name:'Vesna the Herbalist', col:23, row:23, greeting:'"My herbs grow strange in the dark now. But strange is not useless. The draught I make from them burns like ember-fire in the blood."' },
-  { key:'npc_cael',   name:'Brother Cael',        col:15, row:26, greeting:'"The Flame asks only one thing: do not let it go out. Everything else — your life, your fear, your past — is secondary."' },
-  { key:'npc_joren',  name:'Captain Joren',       col:15, row:6,  greeting:'"The wall holds. The gate holds. But for how long? Every night the dark presses closer. Go below. Find the source. End this."' },
+  { key:'npc_baelor', name:'Baelor the Forger', col:5, row:9, lines:[
+    '"I forged this blade for my daughter. She went into the dark and never came back."',
+    '"The blade remembers her hand. It will learn yours. Keep it sharp. Keep yourself sharper."',
+    '"Whatever lives below has been feeding on ember-light for years. Find it. End it."',
+  ]},
+  { key:'npc_elara', name:'Elara the Scholar', col:23, row:9, lines:[
+    '"The ember is not dying. It is being drained. Something below feeds on it."',
+    '"I\'ve traced the ley-lines. The drain originates beneath the plaza. You must descend."',
+    '"Take the portal when you are ready. Find it. Stop it. That is your charge."',
+  ]},
+  { key:'npc_mira', name:'Mira of the Lamp', col:5, row:17, lines:[
+    '"I have kept this tavern open through two wars and a plague. I will keep it open through this."',
+    '"Drink. You look pale. Whatever you face below, face it with a full stomach."',
+  ]},
+  { key:'npc_orin', name:'Orin the Timekeeper', col:23, row:16, lines:[
+    '"Time is a circle, wanderer. We have been here before. We will be here again."',
+    '"The clock in the tower has been running backward for three weeks. That is new."',
+    '"The question is whether we survive the loop. I am less certain about you."',
+  ]},
+  { key:'npc_theo', name:'Theo the Tailor', col:5, row:23, lines:[
+    '"A fine cloak on a wanderer is not vanity. It is armor for the soul."',
+    '"Let the dark see you and know you are not afraid. Come back — I have a commission for you."',
+  ]},
+  { key:'npc_vesna', name:'Vesna the Herbalist', col:23, row:23, lines:[
+    '"My herbs grow strange in the dark now. But strange is not useless."',
+    '"The draught I make from them burns like ember-fire in the blood. Take one."',
+    '"Do not ask what is in it. You would not sleep tonight if I told you."',
+  ]},
+  { key:'npc_cael', name:'Brother Cael', col:15, row:26, lines:[
+    '"The Flame asks only one thing: do not let it go out."',
+    '"Everything else — your life, your fear, your past — is secondary to the Flame\'s continuation."',
+    '"The shrine will shelter you when you return. I pray that you do."',
+  ]},
+  { key:'npc_joren', name:'Captain Joren', col:15, row:6, lines:[
+    '"The wall holds. The gate holds. But for how long?"',
+    '"Every night the dark presses closer. Something stirs below — I feel it in the stones."',
+    '"Go below. Find the source. End this. We cannot hold much longer."',
+  ]},
 ];
 
 interface BldDef { key:string; col:number; row:number; W:number; D:number; H:number; }
@@ -74,15 +106,16 @@ export class HubScene extends Phaser.Scene {
   private portalTime = 0;
   private mapW = 0; private mapH = 0;
   private mapOX = 0; private mapOY = 0;
-  // Dialogue banner
-  private banner!: Phaser.GameObjects.Container;
-  private bannerText!: Phaser.GameObjects.Text;
-  private bannerSpeaker!: Phaser.GameObjects.Text;
+  // State
   private nearNPC: NPCDef | null = null;
-  private bannerTimer = 0;
+  public dialogueOpen = false;
+  private nearPortal = false;
+  private portalEntering = false;
   // Intro
   private introActive = true;
   private introContainer!: Phaser.GameObjects.Container;
+  // Adaptive zoom
+  public camZoom = 1.6;
 
   constructor() { super('HubScene'); }
 
@@ -92,11 +125,14 @@ export class HubScene extends Phaser.Scene {
     this.mapOX = -(this.mapW / 2) + TILE_HALF_W;
     this.mapOY = -(this.mapH / 4);
 
+    // Adaptive zoom: phone landscape (short height) gets lower zoom so more world is visible
+    this.camZoom = Phaser.Math.Clamp(this.scale.height / 480, 0.65, 1.6);
+
     this.cameras.main.setBounds(
       this.mapOX - this.scale.width / 2, this.mapOY - this.scale.height / 2,
       this.mapW + this.scale.width, this.mapH + this.scale.height
     );
-    this.cameras.main.setZoom(1.6);
+    this.cameras.main.setZoom(this.camZoom);
 
     this.buildGround();
     this.buildBuildings();
@@ -113,10 +149,9 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, CAM_LERP, CAM_LERP);
 
     this.inputMgr = new InputManager(this);
-    this.buildDialogueBanner();
     this.buildIntro();
 
-    // Emit portal particles
+    // Portal particles
     const ps = this.isoToScene(14, 10);
     this.add.particles(ps.x, ps.y, 'particle_ember', {
       speed: { min: 8, max: 22 }, angle: { min: 255, max: 285 },
@@ -127,7 +162,7 @@ export class HubScene extends Phaser.Scene {
     });
   }
 
-  // ── Coordinate helper ──────────────────────────────────────────────────────
+  // ── Coordinate helpers ──────────────────────────────────────────────────────
   private isoToScene(col: number, row: number) {
     const s = gridToScreen(col, row);
     return { x: s.x + this.mapOX, y: s.y + this.mapOY };
@@ -140,7 +175,7 @@ export class HubScene extends Phaser.Scene {
     this.player.setDepth(depthOf(this.player.worldX, this.player.worldY) + 50);
   }
 
-  // ── Ground ─────────────────────────────────────────────────────────────────
+  // ── Ground ──────────────────────────────────────────────────────────────────
   private buildGround() {
     const rtW = this.mapW + TILE_W * 2;
     const rtH = this.mapH + TILE_H * 4;
@@ -164,27 +199,24 @@ export class HubScene extends Phaser.Scene {
       case T.COBBLE: return 'tile_cobble';
       case T.PATH:   return 'tile_path';
       case T.DIRT:   return 'tile_dirt';
-      case T.WALL:   return 'tile_cobble'; // buildings rendered as 3D sprites; ground = cobble
+      case T.WALL:   return 'tile_cobble';
       case T.EMBER:  return 'tile_ember';
       case T.WATER:  return 'tile_water';
       default:       return 'tile_cobble';
     }
   }
 
-  // ── Buildings ──────────────────────────────────────────────────────────────
+  // ── Buildings ───────────────────────────────────────────────────────────────
   private buildBuildings() {
     const TW = TILE_HALF_W, TH = TILE_HALF_H;
     for (const b of BUILDINGS) {
-      // Front vertex of building footprint in scene coords
       const front = this.isoToScene(b.col + b.W, b.row + b.D);
       const cw = (b.W + b.D) * TW;
       const padTop = (b.W + b.D) * TH + 6;
       const ch = padTop + b.H + 4;
-      // Origin at the front-ground corner of the canvas
       const img = this.add.image(front.x, front.y, b.key)
         .setOrigin(b.D * TW / cw, (padTop + b.H) / ch)
         .setDepth(depthOf(b.col + b.W, b.row + b.D));
-      // Subtle ground shadow beneath building
       const shadow = this.add.graphics().setDepth(DEPTH.GROUND + 2);
       shadow.fillStyle(0x000000, 0.22);
       shadow.fillEllipse(front.x, front.y - 4, (b.W+b.D) * TW * 0.9, (b.W+b.D) * TH * 0.9);
@@ -192,21 +224,19 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  // ── Lanterns ───────────────────────────────────────────────────────────────
+  // ── Lanterns ────────────────────────────────────────────────────────────────
   private buildLanterns() {
-    // Place lantern posts along the main paths
     const lanternPositions = [
-      [8, 9],[8, 15],[8, 21],         // left path
-      [20, 9],[20, 15],[20, 21],      // right path
-      [14, 3],[16, 3],                // north gate approach
-      [14, 25],[16, 25],              // south shrine approach
-      [11, 12],[11, 15],[17, 12],[17, 15], // inner plaza corners
+      [8, 9],[8, 15],[8, 21],
+      [20, 9],[20, 15],[20, 21],
+      [14, 3],[16, 3],
+      [14, 25],[16, 25],
+      [11, 12],[11, 15],[17, 12],[17, 15],
     ];
     for (const [col, row] of lanternPositions) {
       const s = this.isoToScene(col, row);
       const post = this.add.image(s.x, s.y - 8, 'prop_lantern_post')
         .setDepth(depthOf(col, row) + 15).setScale(1.2);
-      // Warm glow beneath lantern
       const glow = this.add.image(s.x, s.y - 30, 'light_radial')
         .setDepth(depthOf(col, row) + 14)
         .setBlendMode(Phaser.BlendModes.ADD)
@@ -217,30 +247,26 @@ export class HubScene extends Phaser.Scene {
         speed: { min: 3, max: 8 }, angle: { min: 260, max: 280 },
         lifespan: { min: 600, max: 1400 }, scale: { start: 0.7, end: 0 },
         alpha: { start: 0.7, end: 0 }, frequency: 400, quantity: 1,
-        tint: [0xffc060, 0xff9030],
-        blendMode: Phaser.BlendModes.ADD,
+        tint: [0xffc060, 0xff9030], blendMode: Phaser.BlendModes.ADD,
       }).setDepth(depthOf(col, row) + 16);
       void post;
     }
   }
 
-  // ── Portal ─────────────────────────────────────────────────────────────────
+  // ── Portal ──────────────────────────────────────────────────────────────────
   private buildPortal() {
     const p = this.isoToScene(14, 11);
-    // Glow ring on ground
     const ring = this.add.graphics();
     ring.fillStyle(PALETTE.EMBER_MID, 0.08);
     ring.fillEllipse(p.x, p.y + 8, 80, 40);
     ring.setDepth(DEPTH.GROUND + 1);
 
-    // Two side pillars
     for (let i = 0; i < 2; i++) {
       const pillar = this.add.image(p.x + (i === 0 ? -20 : 20), p.y - 18, 'prop_portal_piece')
         .setDepth(p.y + 10 + i).setScale(0.75);
       this.tweens.add({ targets: pillar, y: p.y - 22, duration: 2200 + i*400, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
 
-    // Central light column
     this.portalGlow = this.add.image(p.x, p.y - 26, 'light_radial')
       .setDepth(p.y + 20)
       .setBlendMode(Phaser.BlendModes.ADD)
@@ -248,22 +274,19 @@ export class HubScene extends Phaser.Scene {
       .setTint(PALETTE.EMBER_MID);
   }
 
-  // ── NPCs ───────────────────────────────────────────────────────────────────
+  // ── NPCs ────────────────────────────────────────────────────────────────────
   private buildNPCs() {
     for (const def of NPCS) {
       const s = this.isoToScene(def.col, def.row);
       const sprite = this.add.image(s.x, s.y - 12, def.key, 0)
         .setScale(1.4).setDepth(depthOf(def.col, def.row) + 20);
 
-      // Idle bob
       this.tweens.add({ targets: sprite, y: s.y - 16, duration: 1600 + Math.random()*500, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-      // Walk cycle
       this.time.addEvent({ delay: 850 + Math.random()*300, loop: true, callback: () => {
         sprite.setFrame(Number(sprite.frame.name) === 0 ? 1 : 0);
       }});
 
-      // Name label
-      this.add.text(s.x, s.y - 32, def.name, {
+      this.add.text(s.x, s.y - 34, def.name, {
         fontFamily: 'monospace', fontSize: '8px', color: '#d0b898',
         backgroundColor: '#0a0608cc', padding: { x: 4, y: 2 },
       }).setOrigin(0.5).setDepth(depthOf(def.col, def.row) + 21);
@@ -272,76 +295,38 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  // ── Atmosphere ─────────────────────────────────────────────────────────────
+  // ── Atmosphere ──────────────────────────────────────────────────────────────
   private buildAtmosphere() {
     const SW = this.scale.width, SH = this.scale.height;
-    // Night overlay
+    const cz = this.camZoom;
+    // Divide by camZoom so scrollFactor(0) overlays cover the full screen
+    const SWz = SW / cz, SHz = SH / cz;
+
     const night = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.OVERLAY - 5);
     night.fillStyle(0x0d0a1a, 1);
-    night.fillRect(0, 0, SW, SH);
+    night.fillRect(0, 0, SWz, SHz);
     this.tweens.add({ targets: night, alpha: 0.25, duration: 10000, ease: 'Sine.InOut', yoyo: true, repeat: -1 });
 
-    // Vignette edges
     const vig = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.OVERLAY - 4);
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * 0.4, m = i * 7;
       vig.fillStyle(0x060408, a);
-      vig.fillRect(0, 0, SW, m);
-      vig.fillRect(0, SH - m, SW, m);
-      vig.fillRect(0, 0, m, SH);
-      vig.fillRect(SW - m, 0, m, SH);
+      vig.fillRect(0, 0, SWz, m);
+      vig.fillRect(0, SHz - m, SWz, m);
+      vig.fillRect(0, 0, m, SHz);
+      vig.fillRect(SWz - m, 0, m, SHz);
     }
   }
 
-  // ── Dialogue banner ────────────────────────────────────────────────────────
-  private buildDialogueBanner() {
-    this.banner = this.add.container(this.scale.width / 2, this.scale.height - 38).setScrollFactor(0).setDepth(DEPTH.DIALOGUE).setAlpha(0);
-
-    const bg = this.add.graphics();
-    bg.fillStyle(0x080508, 0.92); bg.fillRoundedRect(-148, -26, 296, 52, 4);
-    bg.lineStyle(1.5, PALETTE.EMBER_MID, 0.8); bg.strokeRoundedRect(-148, -26, 296, 52, 4);
-    bg.lineStyle(1, PALETTE.STONE_DARK, 0.4); bg.strokeRoundedRect(-146, -24, 292, 48, 3);
-    this.banner.add(bg);
-
-    this.bannerSpeaker = this.add.text(-136, -22, '', {
-      fontFamily: 'monospace', fontSize: '9px', color: '#ff6b35', letterSpacing: 1,
-    });
-    this.banner.add(this.bannerSpeaker);
-
-    this.bannerText = this.add.text(-136, -8, '', {
-      fontFamily: 'monospace', fontSize: '8px', color: '#e8d5b0',
-      wordWrap: { width: 272 }, lineSpacing: 3,
-    });
-    this.banner.add(this.bannerText);
-
-    const hint = this.add.text(112, 22, '[E]', {
-      fontFamily: 'monospace', fontSize: '8px', color: '#5a4030',
-    });
-    this.banner.add(hint);
-  }
-
-  private showBanner(npc: NPCDef) {
-    this.nearNPC = npc; this.bannerTimer = 5000;
-    this.bannerSpeaker.setText(npc.name.toUpperCase());
-    this.bannerText.setText(npc.greeting);
-    this.tweens.killTweensOf(this.banner);
-    this.tweens.add({ targets: this.banner, alpha: 1, duration: 180, ease: 'Sine.Out' });
-  }
-
-  private hideBanner() {
-    this.nearNPC = null;
-    this.tweens.killTweensOf(this.banner);
-    this.tweens.add({ targets: this.banner, alpha: 0, duration: 250 });
-  }
-
-  // ── Intro cutscene ────────────────────────────────────────────────────────
+  // ── Intro cutscene ───────────────────────────────────────────────────────────
   private buildIntro() {
     const SW = this.scale.width, SH = this.scale.height;
+    const cz = this.camZoom;
     this.introContainer = this.add.container(0, 0).setScrollFactor(0).setDepth(DEPTH.DIALOGUE + 50);
 
     const overlay = this.add.graphics();
     overlay.fillStyle(0x000000, 1);
-    overlay.fillRect(0, 0, SW, SH);
+    overlay.fillRect(0, 0, SW / cz, SH / cz);
     this.introContainer.add(overlay);
 
     const lines = [
@@ -356,18 +341,17 @@ export class HubScene extends Phaser.Scene {
       'Descend. Rekindle it. Before everything ends.',
     ];
 
-    const textObj = this.add.text(SW / 2, SH / 2 - 30, '', {
+    const textObj = this.add.text(SW / (2 * cz), SH / (2 * cz) - 30, '', {
       fontFamily: 'monospace', fontSize: '11px', color: '#e8d5b0',
-      align: 'center', wordWrap: { width: SW - 80 }, lineSpacing: 6,
+      align: 'center', wordWrap: { width: (SW - 80) / cz }, lineSpacing: 6,
     }).setOrigin(0.5);
     this.introContainer.add(textObj);
 
-    const skipText = this.add.text(SW / 2, SH - 30, 'TAP TO CONTINUE', {
+    const skipText = this.add.text(SW / (2 * cz), (SH - 30) / cz, 'TAP TO CONTINUE', {
       fontFamily: 'monospace', fontSize: '9px', color: '#ff6b35', alpha: 0,
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5);
     this.introContainer.add(skipText);
 
-    // Typewriter reveal
     let fullText = lines.join('\n');
     let shown = 0;
     const ticker = this.time.addEvent({
@@ -382,7 +366,6 @@ export class HubScene extends Phaser.Scene {
       },
     });
 
-    // Tap/click to dismiss
     const dismiss = () => {
       ticker.remove();
       this.introActive = false;
@@ -396,39 +379,82 @@ export class HubScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown', dismiss);
   }
 
-  // ── Update ─────────────────────────────────────────────────────────────────
+  // ── Public methods for UIScene ───────────────────────────────────────────────
+  public closeDialogue() {
+    this.dialogueOpen = false;
+  }
+
+  // ── Portal enter animation ───────────────────────────────────────────────────
+  private enterPortal() {
+    if (this.portalEntering) return;
+    this.portalEntering = true;
+    this.dialogueOpen = true;
+    this.cameras.main.fadeOut(900, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.events.emit('portal-enter');
+      this.time.delayedCall(2800, () => {
+        this.cameras.main.fadeIn(800, 0, 0, 0);
+        this.events.emit('portal-exit');
+        this.portalEntering = false;
+        this.dialogueOpen = false;
+      });
+    });
+  }
+
+  // ── Update ───────────────────────────────────────────────────────────────────
   update(_time: number, delta: number) {
     this.portalTime += delta / 1000;
-
-    // Portal pulse
     this.portalGlow.setAlpha(0.45 + Math.sin(this.portalTime * 2.4) * 0.28);
     this.portalGlow.setScale(0.48 + Math.sin(this.portalTime * 1.7) * 0.07);
 
-    // Block movement during intro
     if (this.introActive) {
       this.events.emit('update-stats', this.player.playerStats);
       return;
     }
 
-    // Input → player
+    if (this.dialogueOpen) {
+      this.events.emit('update-stats', this.player.playerStats);
+      return;
+    }
+
     const inp = this.inputMgr.getState();
     this.player.setVelocity(inp.worldDX, inp.worldDY);
     this.player.update(delta);
     this.syncPlayerPos();
 
-    // NPC proximity
     const px = this.player.worldX, py = this.player.worldY;
-    let nearest: NPCDef | null = null, nearDist = 3.2;
+
+    // Portal proximity
+    const portalDist = Math.hypot(px - 14, py - 11);
+    const newNearPortal = portalDist < 2.5;
+    if (newNearPortal !== this.nearPortal) {
+      this.nearPortal = newNearPortal;
+      this.events.emit('portal-prompt', newNearPortal);
+    }
+
+    // NPC proximity
+    let nearest: NPCDef | null = null, nearDist = 2.8;
     for (const n of this.npcSprites) {
       const d = Math.hypot(px - n.data.col, py - n.data.row);
       if (d < nearDist) { nearDist = d; nearest = n.data; }
     }
-    if (nearest && this.nearNPC !== nearest) this.showBanner(nearest);
-    else if (!nearest && this.nearNPC) this.hideBanner();
+    if (nearest !== this.nearNPC) {
+      this.nearNPC = nearest;
+      this.events.emit('npc-nearby', nearest
+        ? { name: nearest.name, key: nearest.key, lines: nearest.lines } as DialogueData
+        : null);
+    }
 
-    if (this.nearNPC) {
-      this.bannerTimer -= delta;
-      if (this.bannerTimer <= 0) this.hideBanner();
+    // Interaction
+    if (inp.interact) {
+      if (this.nearPortal) {
+        this.enterPortal();
+      } else if (this.nearNPC) {
+        this.dialogueOpen = true;
+        this.events.emit('open-dialogue', {
+          name: this.nearNPC.name, key: this.nearNPC.key, lines: this.nearNPC.lines,
+        } as DialogueData);
+      }
     }
 
     this.events.emit('update-stats', this.player.playerStats);
