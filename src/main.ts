@@ -15,8 +15,10 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',
   scene: [BootScene, PreloadScene, TitleScene, HubScene, DungeonScene, UIScene],
   scale: {
-    mode: Phaser.Scale.RESIZE,   // game coords = viewport coords, no CSS upscaling
+    mode: Phaser.Scale.ENVELOP,  // scale UP to cover screen edge-to-edge, no black bars
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 960,
+    height: 540,
   },
   render: {
     pixelArt: true,

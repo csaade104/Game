@@ -1,7 +1,7 @@
 // ─── EMBERHOLD Game Configuration ───────────────────────────────────────────
 
-export const GAME_W = 480;
-export const GAME_H = 270;
+export const GAME_W = 960;
+export const GAME_H = 540;
 
 // Tile dimensions (isometric diamond)
 export const TILE_W = 64;
