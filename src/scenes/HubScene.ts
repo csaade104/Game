@@ -116,7 +116,7 @@ export class HubScene extends Phaser.Scene {
   // Intro
   private introActive = true;
   private introContainer!: Phaser.GameObjects.Container;
-  public camZoom = 1.0;
+  public camZoom = 0.7;
 
   constructor() { super('HubScene'); }
 
@@ -126,8 +126,7 @@ export class HubScene extends Phaser.Scene {
     this.mapOX = -(this.mapW / 2) + TILE_HALF_W;
     this.mapOY = -(this.mapH / 4);
 
-    // RESIZE mode: game coords = viewport coords, zoom=1.0 is natural pixel size
-    this.camZoom = 1.0;
+    this.camZoom = 0.7; // shows ~21 tiles across — good overview of the hub town
 
     this.cameras.main.setBounds(
       this.mapOX - this.scale.width / 2, this.mapOY - this.scale.height / 2,

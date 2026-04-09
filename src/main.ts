@@ -15,10 +15,10 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',
   scene: [BootScene, PreloadScene, TitleScene, HubScene, DungeonScene, UIScene],
   scale: {
-    mode: Phaser.Scale.ENVELOP,  // scale UP to cover screen edge-to-edge, no black bars
+    mode: Phaser.Scale.FIT,     // scale to fit screen — no cropping, no black bars on iPhone
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: 960,
-    height: 540,
+    height: 444,                // 960/444 ≈ 2.16:1 matches iPhone landscape exactly
   },
   render: {
     pixelArt: true,

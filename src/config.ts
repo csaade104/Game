@@ -1,7 +1,7 @@
 // ─── EMBERHOLD Game Configuration ───────────────────────────────────────────
 
 export const GAME_W = 960;
-export const GAME_H = 540;
+export const GAME_H = 444;   // 2.16:1 — matches iPhone landscape (no crop, no bars)
 
 // Tile dimensions (isometric diamond)
 export const TILE_W = 64;
