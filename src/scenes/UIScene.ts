@@ -61,10 +61,27 @@ export class UIScene extends Phaser.Scene {
   private shopData: ShopOpenData | null = null;
   // Level-up
   private lastLevel = 1;
+  // Safe area (iPhone notch / home indicator)
+  private safeArea = { top: 0, bottom: 0, left: 0, right: 0 };
+  // Button positions (set in buildJoystick, read in pointer handlers)
+  private atkBtnX = 0; private atkBtnY = 0;
+  private itrBtnX = 0; private itrBtnY = 0;
 
   constructor() { super({ key: 'UIScene', active: false }); }
 
+  private getSafeAreaInsets() {
+    const style = getComputedStyle(document.documentElement);
+    const parse = (v: string) => parseFloat(style.getPropertyValue(v)) || 0;
+    return {
+      top:    parse('--sat'),
+      bottom: parse('--sab'),
+      left:   parse('--sal'),
+      right:  parse('--sar'),
+    };
+  }
+
   create() {
+    this.safeArea = this.getSafeAreaInsets();
     this.buildHUD();
     this.hub = this.scene.get('HubScene') as HubScene;
 
@@ -126,21 +143,31 @@ export class UIScene extends Phaser.Scene {
   private buildJoystick() {
     const SW = this.scale.width, SH = this.scale.height;
     const JR = 48;
+    const sa = this.safeArea;
+    // Shift buttons away from safe-area edges (notch left, home-bar bottom on iPhone)
+    const bRight  = Math.round(sa.right)  + 60;   // attack button x from right
+    const bBottom = Math.round(sa.bottom) + 62;   // attack button y from bottom
 
     this.joyBase = this.add.image(SW * 0.2, SH * 0.75, 'joystick_base')
       .setDepth(DEPTH.HUD + 50).setAlpha(0);
     this.joyThumb = this.add.image(SW * 0.2, SH * 0.75, 'joystick_thumb')
       .setDepth(DEPTH.HUD + 51).setAlpha(0);
 
-    this.atkBtn = this.add.image(SW - 60, SH - 62, 'btn_attack')
+    // Store positions for hit-testing (safe-area-aware)
+    this.atkBtnX = SW - bRight;
+    this.atkBtnY = SH - bBottom;
+    this.itrBtnX = SW - bRight - 68;
+    this.itrBtnY = SH - bBottom + 10;
+
+    this.atkBtn = this.add.image(this.atkBtnX, this.atkBtnY, 'btn_attack')
       .setDepth(DEPTH.HUD + 50).setAlpha(0.88);
-    this.add.text(SW - 60, SH - 96, 'ATTACK', {
+    this.add.text(this.atkBtnX, this.atkBtnY - 34, 'ATTACK', {
       fontFamily: 'monospace', fontSize: '10px', color: '#ff6b35',
     }).setOrigin(0.5).setDepth(DEPTH.HUD + 50).setAlpha(0.9);
 
-    this.itrBtn = this.add.image(SW - 128, SH - 52, 'btn_interact')
+    this.itrBtn = this.add.image(this.itrBtnX, this.itrBtnY, 'btn_interact')
       .setDepth(DEPTH.HUD + 50).setAlpha(0.88);
-    this.add.text(SW - 128, SH - 82, 'TALK/USE', {
+    this.add.text(this.itrBtnX, this.itrBtnY - 30, 'TALK/USE', {
       fontFamily: 'monospace', fontSize: '9px', color: '#6ab0e8',
     }).setOrigin(0.5).setDepth(DEPTH.HUD + 50).setAlpha(0.9);
 
@@ -155,8 +182,8 @@ export class UIScene extends Phaser.Scene {
         this.joyThumb.setPosition(p.x, p.y).setAlpha(0.92);
       }
       if (p.x > SW * 0.5 && p.y > SH * 0.5) {
-        const distAtk = Math.hypot(p.x - (SW - 60), p.y - (SH - 60));
-        const distTalk = Math.hypot(p.x - (SW - 120), p.y - (SH - 50));
+        const distAtk  = Math.hypot(p.x - this.atkBtnX, p.y - this.atkBtnY);
+        const distTalk = Math.hypot(p.x - this.itrBtnX, p.y - this.itrBtnY);
         if (distAtk < 48) {
           if (mgr()) { mgr()!.joystickAttack = true; this.time.delayedCall(130, () => { if (mgr()) mgr()!.joystickAttack = false; }); }
           this.tweens.add({ targets: this.atkBtn, scaleX: 0.82, scaleY: 0.82, duration: 80, yoyo: true });
@@ -198,61 +225,66 @@ export class UIScene extends Phaser.Scene {
 
   // ── HUD bars ──────────────────────────────────────────────────────────────────
   private buildHUD() {
-    const pad = 10;
+    const sa = this.safeArea;
+    // Pad away from notch/safe-area edges — minimum 10px, then add inset
+    const padT  = 10 + Math.round(sa.top);
+    const padL  = 10 + Math.round(sa.left);
+    const padR  = 10 + Math.round(sa.right);
     const BAR_W = 120;
-    const ICON_X = pad + 2;
-    const BAR_X = pad + 20;
+    const ICON_X = padL + 2;
+    const BAR_X  = padL + 20;
 
     const panelH = 80;
     const panel = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.HUD);
     panel.fillStyle(0x080508, 0.88);
-    panel.fillRoundedRect(pad - 6, pad - 6, BAR_W + 40, panelH, 5);
+    panel.fillRoundedRect(padL - 6, padT - 6, BAR_W + 40, panelH, 5);
     panel.lineStyle(1.5, PALETTE.EMBER_MID, 0.75);
-    panel.strokeRoundedRect(pad - 6, pad - 6, BAR_W + 40, panelH, 5);
+    panel.strokeRoundedRect(padL - 6, padT - 6, BAR_W + 40, panelH, 5);
 
     // HP
-    this.add.text(ICON_X, pad + 1, '♥', { fontFamily: 'monospace', fontSize: '12px', color: '#e74c3c' })
+    this.add.text(ICON_X, padT + 1, '♥', { fontFamily: 'monospace', fontSize: '12px', color: '#e74c3c' })
       .setScrollFactor(0).setDepth(DEPTH.HUD);
-    this.addBarTrack(BAR_X, pad + 4, BAR_W, 11);
-    this.hpBar = this.add.rectangle(BAR_X, pad + 4, BAR_W, 11, 0xc0392b)
+    this.addBarTrack(BAR_X, padT + 4, BAR_W, 11);
+    this.hpBar = this.add.rectangle(BAR_X, padT + 4, BAR_W, 11, 0xc0392b)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
-    this.add.rectangle(BAR_X, pad + 4, BAR_W, 3, 0xe74c3c, 0.45)
+    this.add.rectangle(BAR_X, padT + 4, BAR_W, 3, 0xe74c3c, 0.45)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 2);
 
     // Stamina
-    this.add.text(ICON_X, pad + 19, '⚡', { fontFamily: 'monospace', fontSize: '10px', color: '#2ecc71' })
+    this.add.text(ICON_X, padT + 19, '⚡', { fontFamily: 'monospace', fontSize: '10px', color: '#2ecc71' })
       .setScrollFactor(0).setDepth(DEPTH.HUD);
-    this.addBarTrack(BAR_X, pad + 20, BAR_W, 9);
-    this.stBar = this.add.rectangle(BAR_X, pad + 20, BAR_W, 9, 0x1a8040)
+    this.addBarTrack(BAR_X, padT + 20, BAR_W, 9);
+    this.stBar = this.add.rectangle(BAR_X, padT + 20, BAR_W, 9, 0x1a8040)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
 
     // Mana
-    this.add.text(ICON_X, pad + 33, '✦', { fontFamily: 'monospace', fontSize: '10px', color: '#3498db' })
+    this.add.text(ICON_X, padT + 33, '✦', { fontFamily: 'monospace', fontSize: '10px', color: '#3498db' })
       .setScrollFactor(0).setDepth(DEPTH.HUD);
-    this.addBarTrack(BAR_X, pad + 34, BAR_W, 9);
-    this.mpBar = this.add.rectangle(BAR_X, pad + 34, BAR_W, 9, 0x1a4090)
+    this.addBarTrack(BAR_X, padT + 34, BAR_W, 9);
+    this.mpBar = this.add.rectangle(BAR_X, padT + 34, BAR_W, 9, 0x1a4090)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
 
     // Level + XP
-    this.levelText = this.add.text(ICON_X, pad + 48, 'LVL 1', {
+    this.levelText = this.add.text(ICON_X, padT + 48, 'LVL 1', {
       fontFamily: 'monospace', fontSize: '9px', color: '#ffd166',
     }).setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    this.addBarTrack(pad + 40, pad + 50, BAR_W - 12, 6);
-    this.xpBar = this.add.rectangle(pad + 40, pad + 50, 0, 6, 0xffd166)
+    this.addBarTrack(padL + 40, padT + 50, BAR_W - 12, 6);
+    this.xpBar = this.add.rectangle(padL + 40, padT + 50, 0, 6, 0xffd166)
       .setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
 
-    // Embers (top-right)
+    // Embers (top-right, respect right safe area for notch on left in landscape)
+    const emX = this.scale.width - 80 - padR + 10; // panel left edge
     const ep = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.HUD);
     ep.fillStyle(0x080508, 0.88);
-    ep.fillRoundedRect(this.scale.width - 80, pad - 6, 74, 28, 5);
+    ep.fillRoundedRect(emX, padT - 6, 74, 28, 5);
     ep.lineStyle(1.5, PALETTE.EMBER_DEEP, 0.75);
-    ep.strokeRoundedRect(this.scale.width - 80, pad - 6, 74, 28, 5);
+    ep.strokeRoundedRect(emX, padT - 6, 74, 28, 5);
 
-    this.emberGlow = this.add.image(this.scale.width - 68, pad + 8, 'icon_ember')
+    this.emberGlow = this.add.image(emX + 12, padT + 8, 'icon_ember')
       .setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    this.emberText = this.add.text(this.scale.width - 52, pad + 1, '0', {
+    this.emberText = this.add.text(emX + 28, padT + 1, '0', {
       fontFamily: 'monospace', fontSize: '12px', color: '#ffd166',
     }).setScrollFactor(0).setDepth(DEPTH.HUD);
 
@@ -325,8 +357,10 @@ export class UIScene extends Phaser.Scene {
     if (data) {
       this.npcPromptName.setText(data.name.toUpperCase());
       this.tweens.add({ targets: this.npcPrompt, alpha: 1, duration: 200, ease: 'Sine.Out' });
+      this.npcPrompt.setInteractive();
     } else {
       this.tweens.add({ targets: this.npcPrompt, alpha: 0, duration: 250 });
+      this.npcPrompt.disableInteractive();
     }
   }
 
@@ -530,6 +564,9 @@ export class UIScene extends Phaser.Scene {
   private showPortalPrompt(show: boolean) {
     this.tweens.killTweensOf(this.portalPromptUI);
     this.tweens.add({ targets: this.portalPromptUI, alpha: show ? 1 : 0, duration: 200 });
+    // Disable hit-testing when invisible — alpha=0 objects still receive pointer events in Phaser
+    if (show) this.portalPromptUI.setInteractive();
+    else this.portalPromptUI.disableInteractive();
   }
 
   private showPortalOverlay() {
@@ -589,6 +626,8 @@ export class UIScene extends Phaser.Scene {
     if (!this.exitPromptUI) return;
     this.tweens.killTweensOf(this.exitPromptUI);
     this.tweens.add({ targets: this.exitPromptUI, alpha: show ? 1 : 0, duration: 200 });
+    if (show) this.exitPromptUI.setInteractive();
+    else this.exitPromptUI.disableInteractive();
   }
 
   // ── Shop UI ──────────────────────────────────────────────────────────────────

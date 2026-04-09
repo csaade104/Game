@@ -31,7 +31,6 @@ export class DungeonScene extends Phaser.Scene {
   private mapOX = 0; private mapOY = 0;
   public camZoom = 1.6;
 
-  private exitTimer = 0;
   private exiting = false;
   private nearExit = false;
   private depth = 1;
@@ -146,6 +145,15 @@ export class DungeonScene extends Phaser.Scene {
           if (rx >= 1 && rx < DCOLS - 1 && this.dungeonMap[cy][rx] === DT.WALL)
             this.dungeonMap[cy][rx] = DT.FLOOR;
         }
+    }
+
+    // Safety: guarantee at least one room so the rest of generation never crashes
+    if (rooms.length === 0) {
+      const fallback: Rect = { x: 6, y: 6, w: 8, h: 7 };
+      for (let ry = fallback.y; ry < fallback.y + fallback.h; ry++)
+        for (let rx = fallback.x; rx < fallback.x + fallback.w; rx++)
+          this.dungeonMap[ry][rx] = DT.FLOOR;
+      rooms.push(fallback);
     }
 
     this.rooms = rooms;
@@ -279,11 +287,13 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     const enemyCount = Math.min(4 + this.depth * 2, 18);
-    for (let i = 0; i < enemyCount; i++) {
-      let roomIdx = Phaser.Math.Between(1, lastRoomIdx);
-      // Don't pile regular enemies into boss room
-      if (this.depth >= 2 && roomIdx === lastRoomIdx) continue;
+    // When a boss occupies the exit room, regular enemies pick from all other rooms
+    const maxEnemyRoom = (this.depth >= 2 && this.rooms.length > 1)
+      ? lastRoomIdx - 1
+      : lastRoomIdx;
 
+    for (let i = 0; i < enemyCount; i++) {
+      const roomIdx = Phaser.Math.Between(1, Math.max(1, maxEnemyRoom));
       const room = this.rooms[roomIdx];
       const col = room.x + Phaser.Math.Between(1, room.w - 2);
       const row = room.y + Phaser.Math.Between(1, room.h - 2);
@@ -542,15 +552,6 @@ export class DungeonScene extends Phaser.Scene {
     }
     if (!chestInteracted && this.nearExit && inp.interact) {
       this.exitDungeon();
-    }
-
-    // ── Auto-exit if all enemies cleared and player on exit ───────────────
-    exitTimer: {
-      if (!this.nearExit) break exitTimer;
-      const aliveEnemies = this.enemies.filter(e => e.alive).length;
-      if (aliveEnemies === 0) this.exitTimer += dt;
-      else this.exitTimer = 0;
-      // Auto-exit after lingering: player must manually press E
     }
 
     // ── Player death ──────────────────────────────────────────────────────
