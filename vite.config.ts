@@ -5,11 +5,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
-      external: ['phaser'],
       output: {
-        globals: {
-          phaser: 'Phaser'
+        manualChunks: {
+          phaser: ['phaser']
         }
       }
     }
