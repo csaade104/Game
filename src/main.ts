@@ -4,6 +4,7 @@ import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { TitleScene } from './scenes/TitleScene';
 import { HubScene } from './scenes/HubScene';
+import { DungeonScene } from './scenes/DungeonScene';
 import { UIScene } from './scenes/UIScene';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -13,7 +14,7 @@ const config: Phaser.Types.Core.GameConfig = {
   antialias: false,
   roundPixels: true,
   parent: 'game-container',
-  scene: [BootScene, PreloadScene, TitleScene, HubScene, UIScene],
+  scene: [BootScene, PreloadScene, TitleScene, HubScene, DungeonScene, UIScene],
   scale: {
     mode: Phaser.Scale.EXPAND,   // fills screen edge-to-edge, no black bars
     autoCenter: Phaser.Scale.CENTER_BOTH,

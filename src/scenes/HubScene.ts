@@ -151,6 +151,14 @@ export class HubScene extends Phaser.Scene {
     this.inputMgr = new InputManager(this);
     this.buildIntro();
 
+    // Restore player stats if returning from dungeon
+    const savedStats = this.game.registry.get('playerStats');
+    if (savedStats) Object.assign(this.player.playerStats, savedStats);
+
+    // Bind UIScene events (also called when returning from dungeon)
+    const ui = this.scene.get('UIScene') as any;
+    if (ui?.bindToScene) ui.bindToScene(this);
+
     // Portal particles
     const ps = this.isoToScene(14, 10);
     this.add.particles(ps.x, ps.y, 'particle_ember', {
@@ -389,15 +397,13 @@ export class HubScene extends Phaser.Scene {
     if (this.portalEntering) return;
     this.portalEntering = true;
     this.dialogueOpen = true;
+    // Save current player stats to registry for dungeon
+    this.game.registry.set('playerStats', { ...this.player.playerStats });
+    this.game.registry.set('dungeonDepth', this.game.registry.get('dungeonDepth') ?? 1);
     this.cameras.main.fadeOut(900, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.events.emit('portal-enter');
-      this.time.delayedCall(2800, () => {
-        this.cameras.main.fadeIn(800, 0, 0, 0);
-        this.events.emit('portal-exit');
-        this.portalEntering = false;
-        this.dialogueOpen = false;
-      });
+      this.events.emit('portal-exit'); // dismiss UI overlay
+      this.scene.start('DungeonScene');
     });
   }
 

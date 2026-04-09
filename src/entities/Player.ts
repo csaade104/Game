@@ -43,6 +43,10 @@ export class Player extends Phaser.GameObjects.Container {
   // Stamina regen
   private staminaRegen = 0;
 
+  // Combat
+  private attackCooldownTimer = 0;
+  public iframeTimer = 0;
+
   // Hub collision map reference
   private collisionMap: number[][] = [];
   private mapCols = 0;
@@ -177,6 +181,16 @@ export class Player extends Phaser.GameObjects.Container {
         this.playerStats.stamina = Math.min(this.playerStats.maxStamina, this.playerStats.stamina + 2);
       }
     }
+
+    // ── Timers ─────────────────────────────────────────────────────────────
+    if (this.attackCooldownTimer > 0) this.attackCooldownTimer -= dt;
+    if (this.iframeTimer > 0) {
+      this.iframeTimer -= dt;
+      // Blink during iframes
+      this.sprite.setAlpha(Math.sin(this.iframeTimer * 22) > 0 ? 1 : 0.25);
+    } else {
+      this.sprite.setAlpha(1);
+    }
   }
 
   private isTileWalkable(col: number, row: number): boolean {
@@ -186,6 +200,40 @@ export class Player extends Phaser.GameObjects.Container {
     // 4 = wall, 0 = void — not walkable
     return tile !== 4 && tile !== 0;
   }
+
+  getFacing(): FacingDir { return this.facing; }
+
+  canAttack(): boolean { return this.attackCooldownTimer <= 0; }
+
+  /** Returns hitbox world position if attack is possible, null if on cooldown. */
+  startAttack(): { worldX: number; worldY: number; radius: number } | null {
+    if (this.attackCooldownTimer > 0) return null;
+    if (this.playerStats.stamina < 6) return null;
+    this.attackCooldownTimer = 0.45;
+    this.playerStats.stamina = Math.max(0, this.playerStats.stamina - 6);
+    // Hitbox in facing direction
+    const reach = 1.4;
+    let hx = this.worldX, hy = this.worldY;
+    switch (this.facing) {
+      case 'N': hy -= reach; break;
+      case 'S': hy += reach; break;
+      case 'E': hx += reach; break;
+      case 'W': hx -= reach; break;
+    }
+    return { worldX: hx, worldY: hy, radius: 1.5 };
+  }
+
+  takeDamage(amount: number): number {
+    if (this.iframeTimer > 0) return 0;
+    const dmg = Math.max(1, amount - Math.floor(this.playerStats.defense / 3));
+    this.playerStats.hp = Math.max(0, this.playerStats.hp - dmg);
+    this.iframeTimer = 0.9;
+    this.sprite.setTint(0xff5050);
+    this.scene.time.delayedCall(160, () => this.sprite.clearTint());
+    return dmg;
+  }
+
+  isAlive(): boolean { return this.playerStats.hp > 0; }
 
   getWorldPos() {
     return { x: this.worldX, y: this.worldY };

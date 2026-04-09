@@ -12,6 +12,7 @@ export class BootScene extends Phaser.Scene {
     this.generateParticles();
     this.generateProps();
     this.generateBuildings();
+    this.generateDungeonAssets();
     document.getElementById('loading-text')?.remove();
     this.scene.start('PreloadScene');
   }
@@ -818,5 +819,176 @@ export class BootScene extends Phaser.Scene {
       g.fillRect(9, 12, 4, 4); g.lineStyle(1, 0x8a6010, 1); g.strokeRect(9, 12, 4, 4);
       g.lineStyle(1, 0x3a1e08, 1); g.strokeRect(0, 6, 22, 16);
       g.generateTexture('prop_chest', 22, 22); g.destroy(); }
+  }
+
+  // ── Dungeon assets ──────────────────────────────────────────────────────────
+  private generateDungeonAssets() {
+    const tw = TILE_W, th = TILE_H, sh = 10;
+
+    // Dark carved stone floor
+    { const g = this.g();
+      this.diamond(g, 0x22182c, 0x16101c, 0x100c16);
+      // Rune crack lines
+      g.lineStyle(0.8, 0x3a2848, 0.35);
+      g.beginPath(); g.moveTo(tw*0.4, th*0.25); g.lineTo(tw*0.5, th*0.1); g.strokePath();
+      g.beginPath(); g.moveTo(tw*0.6, th*0.75); g.lineTo(tw*0.5, th*0.9); g.strokePath();
+      g.beginPath(); g.moveTo(tw*0.3, th*0.6); g.lineTo(tw*0.45, th*0.5); g.strokePath();
+      g.fillStyle(0x4a3060, 0.06);
+      g.fillPoints([{x:tw/2,y:0},{x:tw,y:th/2},{x:tw/2,y:th},{x:0,y:th/2}], true);
+      g.generateTexture('tile_dungeon_floor', tw, th + sh);
+      g.destroy(); }
+
+    // Ember-cracked floor (for scattered atmospheric tiles)
+    { const g = this.g();
+      this.diamond(g, 0x321828, 0x201018, 0x180c10);
+      g.lineStyle(1, 0xff3808, 0.35);
+      g.beginPath(); g.moveTo(tw*0.4, th*0.3); g.lineTo(tw*0.55, th*0.5); g.lineTo(tw*0.45, th*0.7); g.strokePath();
+      g.fillStyle(0xff4010, 0.07);
+      g.fillPoints([{x:tw/2,y:0},{x:tw,y:th/2},{x:tw/2,y:th},{x:0,y:th/2}], true);
+      g.generateTexture('tile_dungeon_ember', tw, th + sh);
+      g.destroy(); }
+
+    // ── Enemy: Grunt (18×26 canvas, 2 frames = 36×26) ──────────────────────
+    {
+      const fw = 18, fh = 26;
+      const c = this.textures.createCanvas('enemy_grunt', fw * 2, fh);
+      const el = c!.getSourceImage() as HTMLCanvasElement;
+      const ctx = el.getContext('2d')!;
+      const px = (x: number, y: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
+
+      for (let f = 0; f < 2; f++) {
+        const ox = f * fw;
+        const bob = f === 1 ? 1 : 0;
+        // Feet
+        for (let r = 0; r < 4; r++) {
+          for (let cc = 2; cc < 7; cc++) px(ox+cc, bob+22+r, '#1a1018');
+          for (let cc = 11; cc < 16; cc++) px(ox+cc, bob+22+r, '#1a1018');
+        }
+        // Legs — chunky armored
+        for (let r = 0; r < 6; r++) {
+          for (let cc = 2; cc < 8; cc++) px(ox+cc, bob+16+r, '#2a2030');
+          for (let cc = 10; cc < 16; cc++) px(ox+cc, bob+16+r, '#2a2030');
+        }
+        // Body — broad dark armor
+        for (let r = 0; r < 10; r++)
+          for (let cc = 1; cc < 17; cc++) px(ox+cc, bob+6+r, '#2e2238');
+        // Chest plate highlights
+        for (let cc = 5; cc < 13; cc++) px(ox+cc, bob+6, '#3e3248');
+        for (let cc = 5; cc < 13; cc++) px(ox+cc, bob+7, '#3e3248');
+        // Shoulder pads
+        for (let r = 0; r < 4; r++) { px(ox+0, bob+7+r, '#3a2a44'); px(ox+1, bob+7+r, '#3a2a44'); }
+        for (let r = 0; r < 4; r++) { px(ox+16, bob+7+r, '#3a2a44'); px(ox+17, bob+7+r, '#3a2a44'); }
+        // Neck
+        for (let cc = 7; cc < 11; cc++) px(ox+cc, bob+5, '#1e1820');
+        // Head — helmet
+        for (let r = 0; r < 6; r++)
+          for (let cc = 5; cc < 13; cc++) px(ox+cc, bob+r, '#2a2030');
+        // Helmet ridge
+        for (let cc = 8; cc < 10; cc++) { px(ox+cc, bob+0, '#1a1428'); px(ox+cc, bob-1+1, '#4a3858'); }
+        // Horns (subtle)
+        px(ox+5, bob+0, '#1e1828'); px(ox+4, bob+0, '#1e1828');
+        px(ox+12, bob+0, '#1e1828'); px(ox+13, bob+0, '#1e1828');
+        // Glowing red eye slit
+        for (let cc = 7; cc < 11; cc++) px(ox+cc, bob+3, '#ff1010');
+        for (let cc = 8; cc < 10; cc++) px(ox+cc, bob+3, '#ff4040');
+        // Eye glow
+        ctx.fillStyle = 'rgba(255,20,20,0.18)';
+        ctx.beginPath(); ctx.arc(ox+9, bob+3, 4, 0, Math.PI*2); ctx.fill();
+        // Claws
+        px(ox+0, bob+15, '#1a1018'); px(ox+17, bob+15, '#1a1018');
+      }
+      c!.refresh();
+    }
+
+    // ── Enemy: Shade (14×22 canvas, 2 frames = 28×22) ───────────────────────
+    {
+      const fw = 14, fh = 22;
+      const c = this.textures.createCanvas('enemy_shade', fw * 2, fh);
+      const el = c!.getSourceImage() as HTMLCanvasElement;
+      const ctx = el.getContext('2d')!;
+      const px = (x: number, y: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
+
+      for (let f = 0; f < 2; f++) {
+        const ox = f * fw;
+        const bob = f === 1 ? 1 : 0;
+        // Wispy tail / lower body
+        ctx.fillStyle = 'rgba(50,20,80,0.6)';
+        for (let r = 12; r < 22; r++) {
+          const spread = Math.floor((r - 12) * 0.4);
+          for (let cc = 3 + spread; cc < 11 - spread; cc++) {
+            ctx.fillStyle = `rgba(${40+r*3},${10+r},${70+r*3},${0.4 + (22-r)*0.04})`;
+            px(ox+cc, bob+r, ctx.fillStyle);
+          }
+        }
+        // Main body
+        for (let r = 4; r < 14; r++)
+          for (let cc = 3; cc < 11; cc++) px(ox+cc, bob+r, '#2a1848');
+        // Body shimmer
+        for (let cc = 5; cc < 9; cc++) px(ox+cc, bob+4, '#3a2858');
+        // Arms (wispy)
+        for (let r = 5; r < 10; r++) { px(ox+1, bob+r, '#1e1038'); px(ox+2, bob+r, '#1e1038'); }
+        for (let r = 5; r < 10; r++) { px(ox+11, bob+r, '#1e1038'); px(ox+12, bob+r, '#1e1038'); }
+        // Head
+        for (let r = 0; r < 5; r++)
+          for (let cc = 4; cc < 10; cc++) px(ox+cc, bob+r, '#241640');
+        // Purple glowing eye
+        px(ox+6, bob+2, '#c080ff'); px(ox+7, bob+2, '#c080ff');
+        px(ox+6, bob+2, '#e0a0ff'); px(ox+7, bob+2, '#e0a0ff');
+        ctx.fillStyle = 'rgba(160,80,255,0.25)';
+        ctx.beginPath(); ctx.arc(ox+7, bob+2, 4, 0, Math.PI*2); ctx.fill();
+      }
+      c!.refresh();
+    }
+
+    // ── Ember pickup on ground (12×14) ──────────────────────────────────────
+    {
+      const g = this.g();
+      // Dark ground patch
+      g.fillStyle(0x1a1020, 1); g.fillEllipse(6, 12, 12, 5);
+      // Crystal
+      g.fillStyle(0xff5010, 1);
+      g.fillTriangle(6, 0, 2, 10, 10, 10);
+      g.fillStyle(0xff8030, 0.9);
+      g.fillTriangle(6, 2, 4, 8, 8, 8);
+      g.fillStyle(0xffc060, 1);
+      g.fillTriangle(6, 3, 5, 7, 7, 7);
+      // Outer glow
+      g.fillStyle(0xff6020, 0.2);
+      g.fillCircle(6, 6, 7);
+      g.generateTexture('pickup_ember_ground', 12, 14);
+      g.destroy();
+    }
+
+    // ── Dungeon wall torch (10×22) ──────────────────────────────────────────
+    {
+      const g = this.g();
+      g.fillStyle(0x3a2818, 1); g.fillRect(3, 8, 4, 14); // post
+      g.fillStyle(0x2a1808, 1); g.fillRect(2, 16, 6, 6);  // base bracket
+      g.fillStyle(0x4a3010, 1); g.fillRect(2, 2, 6, 8);   // head
+      g.lineStyle(0.8, 0x6a4818, 1); g.strokeRect(2, 2, 6, 8);
+      g.fillStyle(0xff7020, 1); g.fillRect(4, 0, 2, 4);   // flame
+      g.fillStyle(0xffb040, 0.9); g.fillRect(4, 0, 2, 2); // flame tip
+      g.fillStyle(0xffc060, 0.15);
+      g.fillCircle(5, 2, 8);
+      g.generateTexture('prop_dungeon_torch', 10, 22);
+      g.destroy();
+    }
+
+    // ── Exit portal tile (embedded in floor) ────────────────────────────────
+    {
+      const g = this.g();
+      this.diamond(g, 0x3a1020, 0x240c14, 0x1a080c);
+      // Glowing ring
+      g.lineStyle(1.5, 0xff2010, 0.6);
+      g.beginPath(); g.moveTo(tw/2, th*0.15); g.lineTo(tw*0.85, th*0.5);
+      g.lineTo(tw/2, th*0.85); g.lineTo(tw*0.15, th*0.5); g.closePath(); g.strokePath();
+      // Center glow
+      g.fillStyle(0xff4020, 0.25);
+      g.fillPoints([{x:tw/2,y:th*0.2},{x:tw*0.8,y:th/2},{x:tw/2,y:th*0.8},{x:tw*0.2,y:th/2}], true);
+      g.fillStyle(0xff8040, 0.5);
+      g.fillCircle(tw/2, th/2, 6);
+      g.generateTexture('tile_dungeon_exit', tw, th + sh);
+      g.destroy();
+    }
   }
 }

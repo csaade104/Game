@@ -3,6 +3,7 @@ import { DEPTH } from '../config';
 import { PALETTE } from '../utils/ColorPalette';
 import { pulse } from '../utils/Easing';
 import { HubScene, DialogueData } from './HubScene';
+import { InputManager } from '../systems/InputManager';
 
 interface Stats {
   hp: number; maxHp: number;
@@ -27,8 +28,12 @@ export class UIScene extends Phaser.Scene {
   private atkBtn!: Phaser.GameObjects.Image;
   private itrBtn!: Phaser.GameObjects.Image;
   private joyPointerID = -1;
-  // Dialogue
+  // Active game scene binding
   private hub!: HubScene;
+  private boundScene: Phaser.Scene | null = null;
+  private boundSceneEvents: Phaser.Events.EventEmitter | null = null;
+  public inputTarget: InputManager | null = null;
+  // Dialogue
   private dialogueBox!: Phaser.GameObjects.Container;
   private dlgSpeaker!: Phaser.GameObjects.Text;
   private dlgText!: Phaser.GameObjects.Text;
@@ -44,25 +49,22 @@ export class UIScene extends Phaser.Scene {
   // Portal UI
   private portalPromptUI!: Phaser.GameObjects.Container;
   private portalOverlayUI!: Phaser.GameObjects.Container;
+  // Dungeon exit prompt
+  private exitPromptUI!: Phaser.GameObjects.Container;
+  private dungeonDepthText!: Phaser.GameObjects.Text;
 
   constructor() { super({ key: 'UIScene', active: false }); }
 
   create() {
     this.buildHUD();
     this.hub = this.scene.get('HubScene') as HubScene;
-    if (this.hub) {
-      this.hub.events.on('update-stats', (s: Stats) => this.updateBars(s));
-      this.hub.events.on('npc-nearby',   (d: DialogueData | null) => this.showNPCPrompt(d));
-      this.hub.events.on('open-dialogue', (d: DialogueData) => this.openDialogue(d));
-      this.hub.events.on('portal-prompt', (show: boolean) => this.showPortalPrompt(show));
-      this.hub.events.on('portal-enter',  () => this.showPortalOverlay());
-      this.hub.events.on('portal-exit',   () => this.hidePortalOverlay());
-      this.buildJoystick(this.hub);
-    }
 
+    this.buildJoystick();
     this.buildNPCPrompt();
     this.buildDialogueBox();
     this.buildPortalUI();
+    this.buildExitPrompt();
+    this.buildDungeonDepthIndicator();
     this.buildControlsHint();
 
     // E key advances open dialogue
@@ -73,8 +75,44 @@ export class UIScene extends Phaser.Scene {
     this.cameras.main.fadeIn(400, 0, 0, 0);
   }
 
+  /** Called by HubScene and DungeonScene when they become active. */
+  public bindToScene(scene: Phaser.Scene) {
+    // Remove old listeners
+    if (this.boundSceneEvents) {
+      this.boundSceneEvents.off('update-stats');
+      this.boundSceneEvents.off('npc-nearby');
+      this.boundSceneEvents.off('open-dialogue');
+      this.boundSceneEvents.off('portal-prompt');
+      this.boundSceneEvents.off('portal-enter');
+      this.boundSceneEvents.off('portal-exit');
+      this.boundSceneEvents.off('exit-prompt');
+    }
+    this.boundScene = scene;
+    this.boundSceneEvents = scene.events;
+    if ((scene as any).inputMgr) this.inputTarget = (scene as any).inputMgr as InputManager;
+    if (scene.scene.key === 'HubScene') this.hub = scene as HubScene;
+
+    scene.events.on('update-stats', (s: Stats) => this.updateBars(s));
+    scene.events.on('npc-nearby',   (d: DialogueData | null) => this.showNPCPrompt(d));
+    scene.events.on('open-dialogue', (d: DialogueData) => this.openDialogue(d));
+    scene.events.on('portal-prompt', (show: boolean) => this.showPortalPrompt(show));
+    scene.events.on('portal-enter',  () => this.showPortalOverlay());
+    scene.events.on('portal-exit',   () => this.hidePortalOverlay());
+    scene.events.on('exit-prompt',   (show: boolean) => this.showExitPrompt(show));
+
+    // Show/hide dungeon depth indicator
+    const inDungeon = scene.scene.key === 'DungeonScene';
+    const depth = this.game.registry.get('dungeonDepth') ?? 1;
+    if (this.dungeonDepthText) {
+      this.dungeonDepthText.setText(`DEPTH ${depth}`).setVisible(inDungeon);
+    }
+    // Hide hub-specific elements in dungeon
+    if (this.portalPromptUI) this.showPortalPrompt(false);
+    if (this.npcPrompt) this.showNPCPrompt(null);
+  }
+
   // ── Joystick ─────────────────────────────────────────────────────────────────
-  private buildJoystick(hub: HubScene) {
+  private buildJoystick() {
     const SW = this.scale.width, SH = this.scale.height;
     const JR = 48;
 
@@ -91,11 +129,12 @@ export class UIScene extends Phaser.Scene {
 
     this.itrBtn = this.add.image(SW - 128, SH - 52, 'btn_interact')
       .setDepth(DEPTH.HUD + 50).setAlpha(0.88);
-    this.add.text(SW - 128, SH - 82, 'TALK', {
-      fontFamily: 'monospace', fontSize: '10px', color: '#6ab0e8',
+    this.add.text(SW - 128, SH - 82, 'TALK/USE', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#6ab0e8',
     }).setOrigin(0.5).setDepth(DEPTH.HUD + 50).setAlpha(0.9);
 
     let activeX = 0, activeY = 0;
+    const mgr = () => this.inputTarget;
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.x < SW * 0.5 && this.joyPointerID === -1) {
@@ -108,19 +147,16 @@ export class UIScene extends Phaser.Scene {
         const distAtk = Math.hypot(p.x - (SW - 60), p.y - (SH - 60));
         const distTalk = Math.hypot(p.x - (SW - 120), p.y - (SH - 50));
         if (distAtk < 48) {
-          hub.inputMgr.joystickAttack = true;
-          this.time.delayedCall(130, () => { hub.inputMgr.joystickAttack = false; });
+          if (mgr()) { mgr()!.joystickAttack = true; this.time.delayedCall(130, () => { if (mgr()) mgr()!.joystickAttack = false; }); }
           this.tweens.add({ targets: this.atkBtn, scaleX: 0.82, scaleY: 0.82, duration: 80, yoyo: true });
         } else if (distTalk < 38) {
           if (this.dlgOpen) {
             this.advanceDialogue();
-          } else if (this.nearNPCData) {
-            // Touch TALK button → open dialogue
-            hub.dialogueOpen = true;
+          } else if (this.nearNPCData && this.hub) {
+            this.hub.dialogueOpen = true;
             this.openDialogue(this.nearNPCData);
           } else {
-            hub.inputMgr.joystickInteract = true;
-            this.time.delayedCall(130, () => { hub.inputMgr.joystickInteract = false; });
+            if (mgr()) { mgr()!.joystickInteract = true; this.time.delayedCall(130, () => { if (mgr()) mgr()!.joystickInteract = false; }); }
           }
           this.tweens.add({ targets: this.itrBtn, scaleX: 0.82, scaleY: 0.82, duration: 80, yoyo: true });
         }
@@ -134,8 +170,10 @@ export class UIScene extends Phaser.Scene {
       const angle = Math.atan2(dy, dx);
       const clamped = Math.min(dist, JR);
       this.joyThumb.setPosition(activeX + Math.cos(angle) * clamped, activeY + Math.sin(angle) * clamped);
-      hub.inputMgr.joystickDX = Math.cos(angle) * Math.min(dist / JR, 1);
-      hub.inputMgr.joystickDY = Math.sin(angle) * Math.min(dist / JR, 1);
+      if (mgr()) {
+        mgr()!.joystickDX = Math.cos(angle) * Math.min(dist / JR, 1);
+        mgr()!.joystickDY = Math.sin(angle) * Math.min(dist / JR, 1);
+      }
     });
 
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
@@ -143,8 +181,7 @@ export class UIScene extends Phaser.Scene {
       this.joyPointerID = -1;
       this.joyBase.setAlpha(0);
       this.joyThumb.setAlpha(0);
-      hub.inputMgr.joystickDX = 0;
-      hub.inputMgr.joystickDY = 0;
+      if (mgr()) { mgr()!.joystickDX = 0; mgr()!.joystickDY = 0; }
     });
   }
 
@@ -434,8 +471,10 @@ export class UIScene extends Phaser.Scene {
     // Make portal prompt tappable
     this.portalPromptUI.setSize(180, 34).setInteractive();
     this.portalPromptUI.on('pointerdown', () => {
-      if (this.hub) this.hub.inputMgr.joystickInteract = true;
-      this.time.delayedCall(130, () => { if (this.hub) this.hub.inputMgr.joystickInteract = false; });
+      if (this.inputTarget) {
+        this.inputTarget.joystickInteract = true;
+        this.time.delayedCall(130, () => { if (this.inputTarget) this.inputTarget.joystickInteract = false; });
+      }
     });
 
     // Portal descend overlay (full screen)
@@ -479,6 +518,57 @@ export class UIScene extends Phaser.Scene {
 
   private hidePortalOverlay() {
     this.tweens.add({ targets: this.portalOverlayUI, alpha: 0, duration: 700 });
+  }
+
+  // ── Exit prompt (dungeon ascend) ─────────────────────────────────────────────
+  private buildExitPrompt() {
+    const SW = this.scale.width, SH = this.scale.height;
+    this.exitPromptUI = this.add.container(SW / 2, SH * 0.55)
+      .setDepth(DEPTH.HUD + 25).setAlpha(0);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0d0914, 0.92);
+    bg.fillRoundedRect(-95, -17, 190, 34, 5);
+    bg.lineStyle(1.5, 0xff2010, 0.85);
+    bg.strokeRoundedRect(-95, -17, 190, 34, 5);
+    this.exitPromptUI.add(bg);
+
+    const icon = this.add.text(-72, 0, '⬆', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#ff4020',
+    }).setOrigin(0, 0.5).setDepth(1);
+    this.exitPromptUI.add(icon);
+
+    const txt = this.add.text(10, -5, 'ASCEND', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#ff6b35', letterSpacing: 2,
+    }).setOrigin(0.5, 0).setDepth(1);
+    this.exitPromptUI.add(txt);
+
+    const hint = this.add.text(10, 8, '[E] / TAP TALK to ascend', {
+      fontFamily: 'monospace', fontSize: '8px', color: '#8a5030',
+    }).setOrigin(0.5, 0).setDepth(1);
+    this.exitPromptUI.add(hint);
+
+    this.exitPromptUI.setSize(190, 34).setInteractive();
+    this.exitPromptUI.on('pointerdown', () => {
+      if (this.inputTarget) {
+        this.inputTarget.joystickInteract = true;
+        this.time.delayedCall(130, () => { if (this.inputTarget) this.inputTarget.joystickInteract = false; });
+      }
+    });
+  }
+
+  private buildDungeonDepthIndicator() {
+    const SW = this.scale.width;
+    this.dungeonDepthText = this.add.text(SW / 2, 14, 'DEPTH 1', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#ff4020',
+      stroke: '#000000', strokeThickness: 2, letterSpacing: 2,
+    }).setOrigin(0.5, 0).setDepth(DEPTH.HUD).setScrollFactor(0).setVisible(false);
+  }
+
+  private showExitPrompt(show: boolean) {
+    if (!this.exitPromptUI) return;
+    this.tweens.killTweensOf(this.exitPromptUI);
+    this.tweens.add({ targets: this.exitPromptUI, alpha: show ? 1 : 0, duration: 200 });
   }
 
   // ── Controls hint (mobile only, fades after 8s) ───────────────────────────────
