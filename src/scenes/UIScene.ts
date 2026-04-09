@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { GAME_W, GAME_H, DEPTH } from '../config';
+import { DEPTH } from '../config';
 import { PALETTE } from '../utils/ColorPalette';
 import { pulse } from '../utils/Easing';
+import { HubScene } from './HubScene';
 
 interface Stats {
   hp: number; maxHp: number;
@@ -19,16 +20,93 @@ export class UIScene extends Phaser.Scene {
   private emberText!: Phaser.GameObjects.Text;
   private emberGlow!: Phaser.GameObjects.Image;
   private uiTime = 0;
+  // Joystick (in UIScene so camera zoom=1 → positions are true screen coords)
+  private joyBase!: Phaser.GameObjects.Image;
+  private joyThumb!: Phaser.GameObjects.Image;
+  private atkBtn!: Phaser.GameObjects.Image;
+  private itrBtn!: Phaser.GameObjects.Image;
+  private joyPointerID = -1;
 
   constructor() { super({ key: 'UIScene', active: false }); }
 
   create() {
     this.buildHUD();
-    const hub = this.scene.get('HubScene');
+    const hub = this.scene.get('HubScene') as HubScene;
     if (hub) {
       hub.events.on('update-stats', (s: Stats) => this.updateBars(s));
+      this.buildJoystick(hub);
     }
     this.cameras.main.fadeIn(400, 0, 0, 0);
+  }
+
+  private buildJoystick(hub: HubScene) {
+    const SW = this.scale.width, SH = this.scale.height;
+    const JR = 48; // max thumb radius
+
+    // Floating joystick — hidden until user touches left half
+    this.joyBase = this.add.image(SW * 0.2, SH * 0.75, 'joystick_base')
+      .setDepth(DEPTH.HUD + 50).setAlpha(0);
+    this.joyThumb = this.add.image(SW * 0.2, SH * 0.75, 'joystick_thumb')
+      .setDepth(DEPTH.HUD + 51).setAlpha(0);
+
+    // Right-side buttons
+    this.atkBtn = this.add.image(SW - 60, SH - 60, 'btn_attack')
+      .setDepth(DEPTH.HUD + 50).setAlpha(0.85);
+    this.add.text(SW - 60, SH - 88, 'ATTACK', {
+      fontFamily: 'monospace', fontSize: '6px', color: '#ff6b35',
+    }).setOrigin(0.5).setDepth(DEPTH.HUD + 50).setAlpha(0.8);
+
+    this.itrBtn = this.add.image(SW - 120, SH - 50, 'btn_interact')
+      .setDepth(DEPTH.HUD + 50).setAlpha(0.85);
+    this.add.text(SW - 120, SH - 76, 'TALK', {
+      fontFamily: 'monospace', fontSize: '6px', color: '#6ab0e8',
+    }).setOrigin(0.5).setDepth(DEPTH.HUD + 50).setAlpha(0.8);
+
+    let activeX = 0, activeY = 0;
+
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      // Left half → joystick
+      if (p.x < SW * 0.5 && this.joyPointerID === -1) {
+        this.joyPointerID = p.id;
+        activeX = p.x; activeY = p.y;
+        this.joyBase.setPosition(p.x, p.y).setAlpha(0.72);
+        this.joyThumb.setPosition(p.x, p.y).setAlpha(0.92);
+      }
+      // Right half bottom → buttons
+      if (p.x > SW * 0.5 && p.y > SH * 0.5) {
+        const distAtk = Math.hypot(p.x - (SW - 60), p.y - (SH - 60));
+        const distTalk = Math.hypot(p.x - (SW - 120), p.y - (SH - 50));
+        if (distAtk < 48) {
+          hub.inputMgr.joystickAttack = true;
+          this.time.delayedCall(130, () => { hub.inputMgr.joystickAttack = false; });
+          this.tweens.add({ targets: this.atkBtn, scaleX: 0.82, scaleY: 0.82, duration: 80, yoyo: true });
+        } else if (distTalk < 38) {
+          hub.inputMgr.joystickInteract = true;
+          this.time.delayedCall(130, () => { hub.inputMgr.joystickInteract = false; });
+          this.tweens.add({ targets: this.itrBtn, scaleX: 0.82, scaleY: 0.82, duration: 80, yoyo: true });
+        }
+      }
+    });
+
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (p.id !== this.joyPointerID) return;
+      const dx = p.x - activeX, dy = p.y - activeY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx);
+      const clamped = Math.min(dist, JR);
+      this.joyThumb.setPosition(activeX + Math.cos(angle) * clamped, activeY + Math.sin(angle) * clamped);
+      hub.inputMgr.joystickDX = Math.cos(angle) * Math.min(dist / JR, 1);
+      hub.inputMgr.joystickDY = Math.sin(angle) * Math.min(dist / JR, 1);
+    });
+
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (p.id !== this.joyPointerID) return;
+      this.joyPointerID = -1;
+      this.joyBase.setAlpha(0);
+      this.joyThumb.setAlpha(0);
+      hub.inputMgr.joystickDX = 0;
+      hub.inputMgr.joystickDY = 0;
+    });
   }
 
   private buildHUD() {

@@ -55,7 +55,7 @@ const NPCS: NPCDef[] = [
 
 export class HubScene extends Phaser.Scene {
   private player!: Player;
-  private inputMgr!: InputManager;
+  public inputMgr!: InputManager;
   private groundRT!: Phaser.GameObjects.RenderTexture;
   private npcSprites: Array<{ sprite: Phaser.GameObjects.Image; data: NPCDef }> = [];
   private portalGlow!: Phaser.GameObjects.Image;
@@ -71,13 +71,6 @@ export class HubScene extends Phaser.Scene {
   // Intro
   private introActive = true;
   private introContainer!: Phaser.GameObjects.Container;
-  // Joystick
-  private joyBase!: Phaser.GameObjects.Image;
-  private joyThumb!: Phaser.GameObjects.Image;
-  private joyBaseX = 60; private joyBaseY = 0;
-  private joyPointerID = -1;
-  private atkBtn!: Phaser.GameObjects.Image;
-  private itrBtn!: Phaser.GameObjects.Image;
 
   constructor() { super('HubScene'); }
 
@@ -86,11 +79,10 @@ export class HubScene extends Phaser.Scene {
     this.mapH = (HUB_COLS + HUB_ROWS) * TILE_HALF_H;
     this.mapOX = -(this.mapW / 2) + TILE_HALF_W;
     this.mapOY = -(this.mapH / 4);
-    this.joyBaseY = this.scale.height - 60;
 
     this.cameras.main.setBounds(
-      this.mapOX - GAME_W / 2, this.mapOY - this.scale.height / 2,
-      this.mapW + GAME_W, this.mapH + GAME_H
+      this.mapOX - this.scale.width / 2, this.mapOY - this.scale.height / 2,
+      this.mapW + this.scale.width, this.mapH + this.scale.height
     );
     this.cameras.main.setZoom(1.6);
 
@@ -107,7 +99,6 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, CAM_LERP, CAM_LERP);
 
     this.inputMgr = new InputManager(this);
-    this.buildJoystick();
     this.buildDialogueBanner();
     this.buildIntro();
 
@@ -216,10 +207,11 @@ export class HubScene extends Phaser.Scene {
 
   // ── Atmosphere ─────────────────────────────────────────────────────────────
   private buildAtmosphere() {
+    const SW = this.scale.width, SH = this.scale.height;
     // Night overlay
     const night = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.OVERLAY - 5);
     night.fillStyle(0x0d0a1a, 1);
-    night.fillRect(0, 0, GAME_W, GAME_H);
+    night.fillRect(0, 0, SW, SH);
     this.tweens.add({ targets: night, alpha: 0.25, duration: 10000, ease: 'Sine.InOut', yoyo: true, repeat: -1 });
 
     // Vignette edges
@@ -227,16 +219,16 @@ export class HubScene extends Phaser.Scene {
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * 0.4, m = i * 7;
       vig.fillStyle(0x060408, a);
-      vig.fillRect(0, 0, GAME_W, m);
-      vig.fillRect(0, GAME_H - m, GAME_W, m);
-      vig.fillRect(0, 0, m, GAME_H);
-      vig.fillRect(GAME_W - m, 0, m, GAME_H);
+      vig.fillRect(0, 0, SW, m);
+      vig.fillRect(0, SH - m, SW, m);
+      vig.fillRect(0, 0, m, SH);
+      vig.fillRect(SW - m, 0, m, SH);
     }
   }
 
   // ── Dialogue banner ────────────────────────────────────────────────────────
   private buildDialogueBanner() {
-    this.banner = this.add.container(GAME_W / 2, GAME_H - 38).setScrollFactor(0).setDepth(DEPTH.DIALOGUE).setAlpha(0);
+    this.banner = this.add.container(this.scale.width / 2, this.scale.height - 38).setScrollFactor(0).setDepth(DEPTH.DIALOGUE).setAlpha(0);
 
     const bg = this.add.graphics();
     bg.fillStyle(0x080508, 0.92); bg.fillRoundedRect(-148, -26, 296, 52, 4);
@@ -277,11 +269,12 @@ export class HubScene extends Phaser.Scene {
 
   // ── Intro cutscene ────────────────────────────────────────────────────────
   private buildIntro() {
+    const SW = this.scale.width, SH = this.scale.height;
     this.introContainer = this.add.container(0, 0).setScrollFactor(0).setDepth(DEPTH.DIALOGUE + 50);
 
     const overlay = this.add.graphics();
     overlay.fillStyle(0x000000, 1);
-    overlay.fillRect(0, 0, GAME_W, GAME_H);
+    overlay.fillRect(0, 0, SW, SH);
     this.introContainer.add(overlay);
 
     const lines = [
@@ -296,13 +289,13 @@ export class HubScene extends Phaser.Scene {
       'Descend. Rekindle it. Before everything ends.',
     ];
 
-    const textObj = this.add.text(GAME_W / 2, this.scale.height / 2 - 20, '', {
+    const textObj = this.add.text(SW / 2, SH / 2 - 20, '', {
       fontFamily: 'monospace', fontSize: '7px', color: '#e8d5b0',
-      align: 'center', wordWrap: { width: GAME_W - 60 }, lineSpacing: 4,
+      align: 'center', wordWrap: { width: SW - 60 }, lineSpacing: 4,
     }).setOrigin(0.5);
     this.introContainer.add(textObj);
 
-    const skipText = this.add.text(GAME_W / 2, GAME_H - 24, 'TAP TO CONTINUE', {
+    const skipText = this.add.text(SW / 2, SH - 24, 'TAP TO CONTINUE', {
       fontFamily: 'monospace', fontSize: '6px', color: '#ff6b35', alpha: 0,
     } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5);
     this.introContainer.add(skipText);
@@ -334,72 +327,6 @@ export class HubScene extends Phaser.Scene {
 
     this.input.once('pointerdown', dismiss);
     this.input.keyboard?.once('keydown', dismiss);
-  }
-
-  // ── Inline joystick ────────────────────────────────────────────────────────
-  private buildJoystick() {
-    const JX = this.joyBaseX, JY = this.joyBaseY;
-
-    this.joyBase = this.add.image(JX, JY, 'joystick_base')
-      .setScrollFactor(0).setDepth(2000).setAlpha(0.75);
-    this.joyThumb = this.add.image(JX, JY, 'joystick_thumb')
-      .setScrollFactor(0).setDepth(2001).setAlpha(0.9);
-
-    // Attack button (bottom-right)
-    this.atkBtn = this.add.image(this.scale.width - 48, this.scale.height - 48, 'btn_attack')
-      .setScrollFactor(0).setDepth(2000).setAlpha(0.85);
-    this.add.text(this.scale.width - 48, this.scale.height - 70, 'ATTACK', {
-      fontFamily: 'monospace', fontSize: '5px', color: '#ff6b35',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(2000).setAlpha(0.7);
-
-    // Interact button
-    this.itrBtn = this.add.image(this.scale.width - 95, this.scale.height - 40, 'btn_interact')
-      .setScrollFactor(0).setDepth(2000).setAlpha(0.85);
-    this.add.text(this.scale.width - 95, this.scale.height - 60, 'TALK', {
-      fontFamily: 'monospace', fontSize: '5px', color: '#6ab0e8',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(2000).setAlpha(0.7);
-
-    const JR = 38; // max radius
-
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      // Joystick zone: left 45% of screen
-      if (p.x < this.scale.width * 0.45 && this.joyPointerID === -1) {
-        this.joyPointerID = p.id;
-      }
-      // Attack button zone: right side, bottom
-      if (p.x > this.scale.width * 0.55 && p.y > this.scale.height * 0.55) {
-        if (p.x > this.scale.width - 90) {
-          this.inputMgr.joystickAttack = true;
-          this.time.delayedCall(120, () => { this.inputMgr.joystickAttack = false; });
-          this.tweens.add({ targets: this.atkBtn, scaleX: 0.85, scaleY: 0.85, duration: 80, yoyo: true });
-        } else {
-          this.inputMgr.joystickInteract = true;
-          this.time.delayedCall(120, () => { this.inputMgr.joystickInteract = false; });
-          this.tweens.add({ targets: this.itrBtn, scaleX: 0.85, scaleY: 0.85, duration: 80, yoyo: true });
-        }
-      }
-    });
-
-    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (p.id !== this.joyPointerID) return;
-      const dx = p.x - JX, dy = p.y - JY;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      const clamped = Math.min(dist, JR);
-      const angle = Math.atan2(dy, dx);
-      this.joyThumb.setPosition(JX + Math.cos(angle)*clamped, JY + Math.sin(angle)*clamped);
-      const norm = Math.min(dist / JR, 1);
-      this.inputMgr.joystickDX = Math.cos(angle) * norm;
-      this.inputMgr.joystickDY = Math.sin(angle) * norm;
-    });
-
-    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (p.id === this.joyPointerID) {
-        this.joyPointerID = -1;
-        this.joyThumb.setPosition(JX, JY);
-        this.inputMgr.joystickDX = 0;
-        this.inputMgr.joystickDY = 0;
-      }
-    });
   }
 
   // ── Update ─────────────────────────────────────────────────────────────────
