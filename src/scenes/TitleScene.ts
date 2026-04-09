@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { GAME_W, GAME_H } from '../config';
 import { PALETTE } from '../utils/ColorPalette';
 import { pulse } from '../utils/Easing';
 
@@ -12,22 +11,26 @@ export class TitleScene extends Phaser.Scene {
   constructor() { super('TitleScene'); }
 
   create() {
-    const cx = GAME_W / 2;
-    const cy = GAME_H / 2;
+    const sw = this.scale.width;
+    const sh = this.scale.height;
+    const cx = sw / 2;
+    const cy = sh / 2;
+    const scaleX = sw / 480;
+    const scaleY = sh / 270;
 
     // ── Sky gradient background ───────────────────────────────────────────
     const bg = this.add.graphics();
     // Deep void at top
     bg.fillGradientStyle(0x0a0608, 0x0a0608, 0x1a0d1f, 0x1a0d1f, 1);
-    bg.fillRect(0, 0, GAME_W, GAME_H * 0.6);
+    bg.fillRect(0, 0, sw, sh * 0.6);
     // Ember horizon
     bg.fillGradientStyle(0x1a0d1f, 0x1a0d1f, 0x3a1008, 0x3a1008, 1);
-    bg.fillRect(0, GAME_H * 0.6, GAME_W, GAME_H * 0.4);
+    bg.fillRect(0, sh * 0.6, sw, sh * 0.4);
 
     // ── Silhouette city skyline ───────────────────────────────────────────
     const skyline = this.add.graphics();
     skyline.fillStyle(0x0d0810, 1);
-    // Towers and battlements
+    // Towers and battlements (designed for 480×270, scaled to actual viewport)
     const buildings = [
       [0, 160, 30, 50],
       [25, 155, 20, 45],
@@ -50,10 +53,10 @@ export class TitleScene extends Phaser.Scene {
       [460, 155, 20, 35],
     ];
     for (const [bx, by, bw, bh] of buildings) {
-      skyline.fillRect(bx, by, bw, bh);
+      skyline.fillRect(bx * scaleX, by * scaleY, bw * scaleX, bh * scaleY);
       // battlements
       for (let m = bx; m < bx + bw; m += 5) {
-        skyline.fillRect(m, by - 4, 3, 4);
+        skyline.fillRect(m * scaleX, (by - 4) * scaleY, 3 * scaleX, 4 * scaleY);
       }
     }
 
@@ -63,27 +66,27 @@ export class TitleScene extends Phaser.Scene {
       const alpha = (0.06 - i * 0.008);
       const h = 8 + i * 10;
       glow.fillStyle(0xff6b35, alpha);
-      glow.fillRect(0, GAME_H - 80 + i * 4, GAME_W, h);
+      glow.fillRect(0, sh - 80 * scaleY + i * 4 * scaleY, sw, h * scaleY);
     }
 
     // ── Stars ─────────────────────────────────────────────────────────────
     const stars = this.add.graphics();
     stars.fillStyle(0xfff1a8, 0.8);
     for (let i = 0; i < 60; i++) {
-      const sx = Phaser.Math.Between(0, GAME_W);
-      const sy = Phaser.Math.Between(0, 120);
+      const sx = Phaser.Math.Between(0, sw);
+      const sy = Phaser.Math.Between(0, sh * 0.44);
       stars.fillRect(sx, sy, 1, 1);
     }
     // A few brighter stars
     stars.fillStyle(0xffffff, 1);
     for (let i = 0; i < 12; i++) {
-      const sx = Phaser.Math.Between(0, GAME_W);
-      const sy = Phaser.Math.Between(0, 100);
+      const sx = Phaser.Math.Between(0, sw);
+      const sy = Phaser.Math.Between(0, sh * 0.37);
       stars.fillRect(sx, sy, 1, 1);
     }
 
     // ── Ember particle emitters ───────────────────────────────────────────
-    this.emberParticles = this.add.particles(cx, GAME_H - 30, 'particle_ember', {
+    this.emberParticles = this.add.particles(cx, sh - 30, 'particle_ember', {
       speed: { min: 8, max: 25 },
       angle: { min: 250, max: 290 },
       lifespan: { min: 2000, max: 4000 },
@@ -149,14 +152,14 @@ export class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // ── Version / lore snippet ─────────────────────────────────────────────
-    this.add.text(cx, GAME_H - 16, '"The ember fades. The dark remembers."', {
+    this.add.text(cx, sh - 16, '"The ember fades. The dark remembers."', {
       fontFamily: 'monospace',
       fontSize: '6px',
       color: '#4a3020',
       letterSpacing: 1,
     }).setOrigin(0.5);
 
-    this.add.text(8, GAME_H - 10, 'v0.1.0', {
+    this.add.text(8, sh - 10, 'v0.1.0', {
       fontFamily: 'monospace',
       fontSize: '6px',
       color: '#3a2818',

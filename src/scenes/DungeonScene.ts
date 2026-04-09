@@ -29,7 +29,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private mapW = 0; private mapH = 0;
   private mapOX = 0; private mapOY = 0;
-  public camZoom = 0.6;
+  public camZoom = 1.0;
 
   private exiting = false;
   private nearExit = false;
@@ -46,7 +46,7 @@ export class DungeonScene extends Phaser.Scene {
     this.mapOX = -(this.mapW / 2) + TILE_HALF_W;
     this.mapOY = -(this.mapH / 4);
 
-    this.camZoom = Phaser.Math.Clamp(this.scale.height / 900, 0.38, 0.75);
+    this.camZoom = 1.0;
     this.cameras.main.setBackgroundColor('#050308');
     this.cameras.main.setBounds(
       this.mapOX - this.scale.width / 2, this.mapOY - this.scale.height / 2,

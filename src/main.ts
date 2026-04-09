@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { GAME_W, GAME_H } from './config';
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { TitleScene } from './scenes/TitleScene';
@@ -16,10 +15,8 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',
   scene: [BootScene, PreloadScene, TitleScene, HubScene, DungeonScene, UIScene],
   scale: {
-    mode: Phaser.Scale.EXPAND,   // fills screen edge-to-edge, no black bars
+    mode: Phaser.Scale.RESIZE,   // game coords = viewport coords, no CSS upscaling
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: GAME_W,
-    height: GAME_H,
   },
   render: {
     pixelArt: true,

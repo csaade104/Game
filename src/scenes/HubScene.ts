@@ -116,8 +116,7 @@ export class HubScene extends Phaser.Scene {
   // Intro
   private introActive = true;
   private introContainer!: Phaser.GameObjects.Container;
-  // Adaptive zoom
-  public camZoom = 0.6;
+  public camZoom = 1.0;
 
   constructor() { super('HubScene'); }
 
@@ -127,8 +126,8 @@ export class HubScene extends Phaser.Scene {
     this.mapOX = -(this.mapW / 2) + TILE_HALF_W;
     this.mapOY = -(this.mapH / 4);
 
-    // Adaptive zoom: phone landscape (short height) gets lower zoom so more world is visible
-    this.camZoom = Phaser.Math.Clamp(this.scale.height / 900, 0.38, 0.75);
+    // RESIZE mode: game coords = viewport coords, zoom=1.0 is natural pixel size
+    this.camZoom = 1.0;
 
     this.cameras.main.setBounds(
       this.mapOX - this.scale.width / 2, this.mapOY - this.scale.height / 2,
