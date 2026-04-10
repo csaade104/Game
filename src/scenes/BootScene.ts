@@ -4,6 +4,10 @@ import { TILE_W, TILE_H } from '../config';
 export class BootScene extends Phaser.Scene {
   constructor() { super('BootScene'); }
 
+  preload() {
+    this.load.image('rl_sheet', 'assets/kenney_roguelike/Spritesheet/roguelikeSheet_transparent.png');
+  }
+
   create() {
     this.generateTiles();
     this.generatePlayer();
@@ -21,10 +25,13 @@ export class BootScene extends Phaser.Scene {
     leftCol: number; rightCol: number; roofCol: number;
     winCol: number; stories: number;
     roofTrim?: number;
+    wallTile: [number, number]; // [col, row] in roguelike sheet (rows 25-29)
+    peakH?: number;             // roof peak height override
     detail?: (ctx: CanvasRenderingContext2D, c: Record<string,{x:number,y:number}>) => void;
   }) {
     const TW = 32, TH = 16;
-    const padTop = (W + D) * TH + 6;
+    const peakH = opts.peakH ?? Math.max(TH, Math.round(H * 0.25));
+    const padTop = (W + D) * TH + peakH + 10;
     const cw = (W + D) * TW;
     const ch = padTop + H + 4;
 
@@ -49,10 +56,34 @@ export class BootScene extends Phaser.Scene {
     const bGx = fGx+(W-D)*TW, bGy = fGy-(W+D)*TH;
     const fTy = fGy-H, lTy = lGy-H, rTy = rGy-H, bTy = bGy-H;
 
+    // Roguelike sheet — tiled wall texture
+    const rl = this.textures.get('rl_sheet').getSourceImage() as HTMLImageElement;
+    const RLSTRIDE = 17, TS = 32; // 16px tiles displayed at 2×
+    const [tc, tr] = opts.wallTile;
+
+    // Fill face polygon with tiled roguelike texture + color identity overlay
+    const drawFace = (pts: number[][], colorHex: number, alpha: number) => {
+      ctx.save();
+      ctx.beginPath();
+      pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.closePath();
+      ctx.clip();
+      const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+      for (let ty = Math.floor(Math.min(...ys) / TS) * TS; ty <= Math.max(...ys) + TS; ty += TS)
+        for (let tx = Math.floor(Math.min(...xs) / TS) * TS; tx <= Math.max(...xs) + TS; tx += TS)
+          ctx.drawImage(rl, tc * RLSTRIDE, tr * RLSTRIDE, 16, 16, tx, ty, TS, TS);
+      ctx.fillStyle = h(colorHex); ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1.0;
+      ctx.restore();
+    };
+
     // Left face (visible south-west wall)
-    poly([[fGx,fGy],[lGx,lGy],[lGx,lTy],[fGx,fTy]], h(opts.leftCol));
+    drawFace([[fGx,fGy],[lGx,lGy],[lGx,lTy],[fGx,fTy]], opts.leftCol, 0.42);
     // Stone course lines
-    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1;
     for (let s = 1; s < opts.stories; s++) {
       const v = s / opts.stories;
       const y0 = fGy - v*H, y1 = lGy - v*H;
@@ -66,25 +97,22 @@ export class BootScene extends Phaser.Scene {
         const v = 1 - (s + 0.6) / opts.stories;
         const wx = fGx + u*W*TW, wy = fGy - u*W*TH - v*H;
         const ww = 5, wh = 7;
-        // parallelogram window matching face slope (-0.5)
         ctx.beginPath();
         ctx.moveTo(wx-ww, wy+wh+ww*0.5); ctx.lineTo(wx+ww, wy+wh-ww*0.5);
         ctx.lineTo(wx+ww, wy-wh-ww*0.5); ctx.lineTo(wx-ww, wy-wh+ww*0.5);
         ctx.closePath();
         ctx.fillStyle = h(opts.winCol); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,220,120,0.25)'; ctx.lineWidth = 0.5; ctx.stroke();
-        // inner glow dot
-        ctx.fillStyle = 'rgba(255,255,200,0.4)';
+        ctx.strokeStyle = 'rgba(255,220,120,0.3)'; ctx.lineWidth = 0.5; ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,200,0.45)';
         ctx.fillRect(wx-1, wy-2, 2, 2);
       }
     }
-    // Left face edge outline
     ctx.strokeStyle = '#08040a'; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(fGx,fGy); ctx.lineTo(lGx,lGy); ctx.lineTo(lGx,lTy); ctx.lineTo(fGx,fTy); ctx.closePath(); ctx.stroke();
 
     // Right face (visible south-east wall, darker)
-    poly([[fGx,fGy],[rGx,rGy],[rGx,rTy],[fGx,fTy]], h(opts.rightCol));
-    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+    drawFace([[fGx,fGy],[rGx,rGy],[rGx,rTy],[fGx,fTy]], opts.rightCol, 0.52);
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1;
     for (let s = 1; s < opts.stories; s++) {
       const v = s / opts.stories;
       ctx.beginPath(); ctx.moveTo(fGx, fGy-v*H); ctx.lineTo(rGx, rGy-v*H); ctx.stroke();
@@ -106,13 +134,22 @@ export class BootScene extends Phaser.Scene {
     ctx.strokeStyle = '#08040a'; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(fGx,fGy); ctx.lineTo(rGx,rGy); ctx.lineTo(rGx,rTy); ctx.lineTo(fGx,fTy); ctx.closePath(); ctx.stroke();
 
-    // Roof
-    poly([[fGx,fTy],[lGx,lTy],[bGx,bTy],[rGx,rTy]], h(opts.roofCol), '#08040a');
-    // Roof trim highlight
+    // Peaked hip roof (4 slopes meeting at center peak)
+    const peakX = (fGx + bGx) / 2;
+    const peakY = Math.min(lTy, rTy) - peakH;
     const trim = opts.roofTrim ?? opts.roofCol;
-    ctx.strokeStyle = h(trim); ctx.lineWidth = 1.5; ctx.globalAlpha = 0.45;
-    ctx.beginPath(); ctx.moveTo(fGx,fTy); ctx.lineTo(lGx,lTy); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(fGx,fTy); ctx.lineTo(rGx,rTy); ctx.stroke();
+    const darkRoof = opts.roofCol >> 1 & 0x7f7f7f;
+    // Back slopes drawn first (partially hidden behind front slopes)
+    poly([[lGx,lTy],[bGx,bTy],[peakX,peakY]], h(darkRoof));
+    poly([[rGx,rTy],[bGx,bTy],[peakX,peakY]], h(darkRoof));
+    // Front slopes facing viewer
+    poly([[fGx,fTy],[lGx,lTy],[peakX,peakY]], h(opts.roofCol));
+    poly([[fGx,fTy],[rGx,rTy],[peakX,peakY]], h(opts.roofCol));
+    // Ridge line highlights
+    ctx.strokeStyle = h(trim); ctx.lineWidth = 1.8; ctx.globalAlpha = 0.65;
+    ctx.beginPath(); ctx.moveTo(fGx, fTy); ctx.lineTo(peakX, peakY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lGx, lTy); ctx.lineTo(peakX, peakY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(rGx, rTy); ctx.lineTo(peakX, peakY); ctx.stroke();
     ctx.globalAlpha = 1;
 
     // Custom detail callback
@@ -127,7 +164,7 @@ export class BootScene extends Phaser.Scene {
     // ── FORGE (Baelor) — dark stone, fire-orange glow ─────────────────────
     this.makeBuilding('bld_forge', 4, 4, 80, {
       leftCol:0x8a4a30, rightCol:0x5c301e, roofCol:0x3a200e, roofTrim:0xd06030,
-      winCol:0xff8040, stories:2,
+      winCol:0xff8040, stories:2, wallTile:[13,26],
       detail(ctx, c) {
         // Chimney on left face top
         ctx.fillStyle = '#1a1010';
@@ -150,7 +187,7 @@ export class BootScene extends Phaser.Scene {
     // ── ACADEMY (Elara) — deep purple stone, blue glow ────────────────────
     this.makeBuilding('bld_academy', 4, 4, 104, {
       leftCol:0x5a4098, rightCol:0x3a2868, roofCol:0x241840, roofTrim:0x8070e0,
-      winCol:0x80a0ff, stories:3,
+      winCol:0x80a0ff, stories:3, wallTile:[4,26],
       detail(ctx, c) {
         // Tower spire from roof center
         const mx = (c.fT.x+c.bT.x)/2, my = Math.min(c.lT.y,c.rT.y);
@@ -169,7 +206,7 @@ export class BootScene extends Phaser.Scene {
     // ── TAVERN (Mira) — warm wood, amber windows ──────────────────────────
     this.makeBuilding('bld_tavern', 4, 4, 72, {
       leftCol:0x8a5a28, rightCol:0x5c3a18, roofCol:0x3c2408, roofTrim:0xc08040,
-      winCol:0xffc040, stories:2,
+      winCol:0xffc040, stories:2, wallTile:[1,26],
       detail(ctx, c) {
         // Hanging sign
         const sx = c.fT.x + 0.15*4*32, sy = c.fT.y + 24;
@@ -191,7 +228,7 @@ export class BootScene extends Phaser.Scene {
     // ── CLOCKTOWER (Orin) — tall stone, lantern top ───────────────────────
     this.makeBuilding('bld_clocktower', 2, 2, 144, {
       leftCol:0x585070, rightCol:0x3a3450, roofCol:0x282038, roofTrim:0xa090d0,
-      winCol:0xb0c0e0, stories:4,
+      winCol:0xb0c0e0, stories:4, wallTile:[4,26],
       detail(ctx, c) {
         // Clock face on left face
         const cfx = c.fG.x + 0.5*2*32, cfy = c.fG.y - 0.5*2*16 - 0.75*144;
@@ -218,7 +255,7 @@ export class BootScene extends Phaser.Scene {
     // ── SHRINE (Cael) — ember-glow, ornate ───────────────────────────────
     this.makeBuilding('bld_shrine', 4, 3, 72, {
       leftCol:0x703028, rightCol:0x4a1e18, roofCol:0x2a100c, roofTrim:0xff6030,
-      winCol:0xff7040, stories:2,
+      winCol:0xff7040, stories:2, wallTile:[13,26],
       detail(ctx, c) {
         // Ember flame at roof peak
         const ex = (c.fT.x+c.bT.x)/2, ey = Math.min(c.lT.y, c.rT.y);
@@ -237,7 +274,7 @@ export class BootScene extends Phaser.Scene {
     // ── GATEHOUSE (Joren) — heavy stone arch ─────────────────────────────
     this.makeBuilding('bld_gatehouse', 6, 3, 64, {
       leftCol:0x686080, rightCol:0x484060, roofCol:0x302840, roofTrim:0xa098c0,
-      winCol:0xa0b0c8, stories:2,
+      winCol:0xa0b0c8, stories:2, wallTile:[4,26],
       detail(ctx, c) {
         // Gate arch on left face
         const gx = c.fG.x + 0.5*6*32, gy = c.fG.y - 0.5*6*16;
@@ -266,7 +303,7 @@ export class BootScene extends Phaser.Scene {
     // ── TAILOR (Theo) — green-trim wood ──────────────────────────────────
     this.makeBuilding('bld_tailor', 4, 4, 68, {
       leftCol:0x786030, rightCol:0x503e18, roofCol:0x302008, roofTrim:0x70a030,
-      winCol:0xb0e060, stories:2,
+      winCol:0xb0e060, stories:2, wallTile:[1,26],
       detail(ctx, c) {
         // Green awning
         const ax = c.fG.x + 0.5*4*32, ay = c.fG.y - 0.5*4*16 - 0.35*68;
@@ -283,7 +320,7 @@ export class BootScene extends Phaser.Scene {
     // ── APOTHECARY (Vesna) — green stone, herb glow ───────────────────────
     this.makeBuilding('bld_apothecary', 4, 4, 68, {
       leftCol:0x306040, rightCol:0x1e3e28, roofCol:0x101e14, roofTrim:0x509060,
-      winCol:0x60d080, stories:2,
+      winCol:0x60d080, stories:2, wallTile:[4,26],
       detail(ctx, c) {
         // Hanging herb bundles
         [0.25, 0.65].forEach(t => {
