@@ -230,11 +230,13 @@ export class HubScene extends Phaser.Scene {
       const cw = (b.W + b.D) * TW;
       const padTop = (b.W + b.D) * TH + 6;
       const ch = padTop + b.H + 4;
+      // Depth: midpoint of building footprint — ensures NPCs/player
+      // standing in front appear on top of the building sprite.
       const img = this.add.image(front.x, front.y, b.key)
         .setOrigin(b.D * TW / cw, (padTop + b.H) / ch)
-        .setDepth(depthOf(b.col + b.W, b.row + b.D));
+        .setDepth(depthOf(b.col + b.W / 2, b.row + b.D / 2));
       const shadow = this.add.graphics().setDepth(DEPTH.GROUND + 2);
-      shadow.fillStyle(0x000000, 0.22);
+      shadow.fillStyle(0x000000, 0.25);
       shadow.fillEllipse(front.x, front.y - 4, (b.W+b.D) * TW * 0.9, (b.W+b.D) * TH * 0.9);
       void img;
     }
@@ -313,25 +315,15 @@ export class HubScene extends Phaser.Scene {
 
   // ── Atmosphere ──────────────────────────────────────────────────────────────
   private buildAtmosphere() {
-    const SW = this.scale.width, SH = this.scale.height;
-    const cz = this.camZoom;
-    // Divide by camZoom so scrollFactor(0) overlays cover the full screen
-    const SWz = SW / cz, SHz = SH / cz;
-
-    const night = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.OVERLAY - 5);
+    // Night tint: world-space huge rect (no scrollFactor) — avoids the
+    // visible-box-outline bug that occurs when scrollFactor(0) interacts
+    // with camera zoom. Covers the entire map + padding.
+    const night = this.add.graphics().setDepth(DEPTH.OVERLAY - 5);
     night.fillStyle(0x0d0a1a, 1);
-    night.fillRect(0, 0, SWz, SHz);
-    this.tweens.add({ targets: night, alpha: 0.25, duration: 10000, ease: 'Sine.InOut', yoyo: true, repeat: -1 });
-
-    const vig = this.add.graphics().setScrollFactor(0).setDepth(DEPTH.OVERLAY - 4);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * 0.4, m = i * 7;
-      vig.fillStyle(0x060408, a);
-      vig.fillRect(0, 0, SWz, m);
-      vig.fillRect(0, SHz - m, SWz, m);
-      vig.fillRect(0, 0, m, SHz);
-      vig.fillRect(SWz - m, 0, m, SHz);
-    }
+    night.fillRect(-12000, -6000, 24000, 12000);
+    this.tweens.add({ targets: night, alpha: 0.22, duration: 10000,
+      ease: 'Sine.InOut', yoyo: true, repeat: -1 });
+    // (Vignette is now handled by UIScene which runs at zoom=1, no distortion)
   }
 
   // ── Intro cutscene ───────────────────────────────────────────────────────────

@@ -85,6 +85,7 @@ export class UIScene extends Phaser.Scene {
     this.buildHUD();
     this.hub = this.scene.get('HubScene') as HubScene;
 
+    this.buildVignette();
     this.buildJoystick();
     this.buildNPCPrompt();
     this.buildDialogueBox();
@@ -224,6 +225,20 @@ export class UIScene extends Phaser.Scene {
   }
 
   // ── HUD bars ──────────────────────────────────────────────────────────────────
+  // ── Screen vignette (edge darkening) — lives in UIScene so zoom=1 always ──
+  private buildVignette() {
+    const SW = this.scale.width, SH = this.scale.height;
+    const vig = this.add.graphics().setDepth(DEPTH.HUD - 10);
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * 0.38, m = i * 10 + 4;
+      vig.fillStyle(0x060408, a);
+      vig.fillRect(0, 0, SW, m);          // top
+      vig.fillRect(0, SH - m, SW, m);    // bottom
+      vig.fillRect(0, 0, m, SH);         // left
+      vig.fillRect(SW - m, 0, m, SH);    // right
+    }
+  }
+
   private buildHUD() {
     const sa = this.safeArea;
     // Pad away from notch/safe-area edges — minimum 10px, then add inset
