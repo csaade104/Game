@@ -80,6 +80,11 @@ const NPCS: NPCDef[] = [
     '"Everything else — your life, your fear, your past — is secondary to the Flame\'s continuation."',
     '"The shrine will shelter you when you return. I pray that you do."',
   ]},
+  { key:'npc_merchant', name:'Rael the Wanderer', col:15, row:14, lines:[
+    '"I travel the ember roads between cities that no longer exist. What I carry, you cannot find elsewhere."',
+    '"Rare stock. Limited time. Don\'t ask where it comes from."',
+    '"The price is embers. Everything costs embers now. Even hope."',
+  ]},
   { key:'npc_joren', name:'Captain Joren', col:15, row:6, lines:[
     '"The wall holds. The gate holds. But for how long?"',
     '"Every night the dark presses closer. Something stirs below — I feel it in the stones."',
@@ -310,6 +315,27 @@ export class HubScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(depthOf(def.col, def.row) + 21);
 
       this.npcSprites.push({ sprite, data: def });
+
+      // Wandering merchant: patrol a short loop around the central plaza
+      if (def.key === 'npc_merchant') {
+        const waypoints = [
+          { col: 15, row: 14 }, { col: 13, row: 13 },
+          { col: 15, row: 12 }, { col: 17, row: 13 },
+        ];
+        let wpIdx = 0;
+        const patrol = () => {
+          wpIdx = (wpIdx + 1) % waypoints.length;
+          const wp = waypoints[wpIdx];
+          const dest = this.isoToScene(wp.col, wp.row);
+          this.tweens.add({
+            targets: sprite, x: dest.x, y: dest.y - 16,
+            duration: 2800 + Math.random() * 1500,
+            ease: 'Sine.InOut',
+            onComplete: () => this.time.delayedCall(1000 + Math.random() * 1000, patrol),
+          });
+        };
+        this.time.delayedCall(1500, patrol);
+      }
     }
   }
 
@@ -402,6 +428,18 @@ export class HubScene extends Phaser.Scene {
         apply: () => { if (p.embers < 18) return false; p.embers -= 18; p.maxStamina += 20; p.stamina = Math.min(p.stamina + 20, p.maxStamina); emit(); return true; } },
     ];
 
+    const merchant = NPCS.find(n => n.key === 'npc_merchant')!;
+    merchant.shopItems = [
+      { label: 'Ember Shard',     desc: '+50 Embers (rare find)', cost: 0,
+        apply: () => { p.embers += 50; emit(); return true; } },
+      { label: 'Ancient Tonic',   desc: '+50 Max HP + restore', cost: 30,
+        apply: () => { if (p.embers < 30) return false; p.embers -= 30; p.maxHp += 50; p.hp = p.maxHp; emit(); return true; } },
+      { label: 'Whetstone',       desc: '+6 Attack, +3 Defense', cost: 35,
+        apply: () => { if (p.embers < 35) return false; p.embers -= 35; p.attack += 6; p.defense += 3; emit(); return true; } },
+      { label: 'Wanderer\'s Luck', desc: '+1 Level (instant XP)', cost: 45,
+        apply: () => { if (p.embers < 45) return false; p.embers -= 45; p.xp += p.level * 100; emit(); return true; } },
+    ];
+
     const vesna = NPCS.find(n => n.key === 'npc_vesna')!;
     vesna.shopItems = [
       { label: 'Vitality Draught', desc: '+30 Max HP', cost: 20,
@@ -465,10 +503,11 @@ export class HubScene extends Phaser.Scene {
     }
 
     // NPC proximity
-    let nearest: NPCDef | null = null, nearDist = 2.8;
+    let nearest: NPCDef | null = null, nearDist = 999;
     for (const n of this.npcSprites) {
+      const radius = n.data.key === 'npc_merchant' ? 4.0 : 2.8;
       const d = Math.hypot(px - n.data.col, py - n.data.row);
-      if (d < nearDist) { nearDist = d; nearest = n.data; }
+      if (d < radius && d < nearDist) { nearDist = d; nearest = n.data; }
     }
     if (nearest !== this.nearNPC) {
       this.nearNPC = nearest;

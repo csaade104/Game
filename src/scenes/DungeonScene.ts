@@ -302,7 +302,13 @@ export class DungeonScene extends Phaser.Scene {
       const row = room.y + Phaser.Math.Between(1, room.h - 2);
       if (!this.isTileWalkable(col, row)) continue;
 
-      const type = Math.random() < 0.55 ? 'grunt' : 'shade';
+      const type = (() => {
+        const r = Math.random();
+        if (r < 0.20) return 'archer';
+        if (r < 0.45) return 'spearman';
+        if (r < 0.72) return 'grunt';
+        return 'shade';
+      })() as 'archer' | 'spearman' | 'grunt' | 'shade';
       this.enemies.push(new Enemy(this, col + 0.5, row + 0.5, type));
     }
   }
@@ -373,6 +379,55 @@ export class DungeonScene extends Phaser.Scene {
       .setName('ambient_light');
   }
 
+  // ── Attack VFX ─────────────────────────────────────────────────────────────
+  spawnPlayerAttackVFX(wx: number, wy: number, facing: string) {
+    const DIRS: Record<string, { dx: number; dy: number }> = {
+      N: { dx: 0, dy: -1.8 }, S: { dx: 0, dy: 1.8 },
+      E: { dx: 1.8, dy: 0 },  W: { dx: -1.8, dy: 0 },
+    };
+    const dir = DIRS[facing] ?? DIRS['S'];
+    const from = this.isoToScene(wx, wy);
+    const to   = this.isoToScene(wx + dir.dx, wy + dir.dy);
+
+    const arrow = this.add.image(from.x, from.y - 14, 'vfx_arrow')
+      .setScale(0.7).setAlpha(0.92).setDepth(DEPTH.OVERLAY - 1);
+    // Rotate to face the direction
+    const screenAngle = Math.atan2(to.y - from.y, to.x - from.x);
+    arrow.setRotation(screenAngle);
+
+    this.tweens.add({
+      targets: arrow, x: to.x, y: to.y - 14,
+      alpha: 0, duration: 220, ease: 'Power2',
+      onComplete: () => arrow.destroy(),
+    });
+
+    // Impact ring at target
+    const ring = this.add.image(to.x, to.y - 14, 'vfx_ring')
+      .setScale(0).setAlpha(0.85).setDepth(DEPTH.OVERLAY - 1)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: ring, scale: 1.2, alpha: 0, duration: 260,
+      ease: 'Power1', delay: 180, onComplete: () => ring.destroy(),
+    });
+  }
+
+  spawnArrowVFX(fromWX: number, fromWY: number, toWX: number, toWY: number) {
+    const from = this.isoToScene(fromWX, fromWY);
+    const to   = this.isoToScene(toWX, toWY);
+
+    const arrow = this.add.image(from.x, from.y - 14, 'vfx_arrow')
+      .setScale(0.65).setAlpha(0.85).setDepth(DEPTH.OVERLAY - 1)
+      .setTint(0xd0c080);
+    const screenAngle = Math.atan2(to.y - from.y, to.x - from.x);
+    arrow.setRotation(screenAngle);
+
+    this.tweens.add({
+      targets: arrow, x: to.x, y: to.y - 14,
+      alpha: 0, duration: 380, ease: 'Linear',
+      onComplete: () => arrow.destroy(),
+    });
+  }
+
   // ── Damage number floater ──────────────────────────────────────────────────
   private showDamageNumber(worldX: number, worldY: number, dmg: number, color = '#ff6b35') {
     const s = this.isoToScene(worldX, worldY);
@@ -436,6 +491,11 @@ export class DungeonScene extends Phaser.Scene {
     if (inp.attack) {
       const hitbox = this.player.startAttack();
       if (hitbox) {
+        // Spawn arrow VFX in facing direction
+        this.spawnPlayerAttackVFX(
+          this.player.worldX, this.player.worldY,
+          this.player.getFacing()
+        );
         let hitCount = 0;
         for (const e of this.enemies) {
           if (!e.alive) continue;
@@ -490,6 +550,11 @@ export class DungeonScene extends Phaser.Scene {
       // Sync screen position
       const s = this.isoToScene(e.worldX, e.worldY);
       e.syncToScreen(s.x, s.y, depthOf(e.worldX, e.worldY));
+
+      // Archer ranged attack VFX
+      if (result.rangedAttack) {
+        this.spawnArrowVFX(e.worldX, e.worldY, px, py);
+      }
 
       // Enemy hits player
       if (result.playerHit && this.player.isAlive()) {
