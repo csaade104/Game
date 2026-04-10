@@ -7,7 +7,6 @@ export class BootScene extends Phaser.Scene {
   create() {
     this.generateTiles();
     this.generatePlayer();
-    this.generateNPCs();
     this.generateUI();
     this.generateParticles();
     this.generateProps();
@@ -127,8 +126,8 @@ export class BootScene extends Phaser.Scene {
   private generateBuildings() {
     // ── FORGE (Baelor) — dark stone, fire-orange glow ─────────────────────
     this.makeBuilding('bld_forge', 4, 4, 80, {
-      leftCol:0x2e2420, rightCol:0x201a18, roofCol:0x1a1210, roofTrim:0x5a3820,
-      winCol:0xff6020, stories:2,
+      leftCol:0x8a4a30, rightCol:0x5c301e, roofCol:0x3a200e, roofTrim:0xd06030,
+      winCol:0xff8040, stories:2,
       detail(ctx, c) {
         // Chimney on left face top
         ctx.fillStyle = '#1a1010';
@@ -150,8 +149,8 @@ export class BootScene extends Phaser.Scene {
 
     // ── ACADEMY (Elara) — deep purple stone, blue glow ────────────────────
     this.makeBuilding('bld_academy', 4, 4, 104, {
-      leftCol:0x20182e, rightCol:0x16101e, roofCol:0x100c18, roofTrim:0x4040a0,
-      winCol:0x4060ff, stories:3,
+      leftCol:0x5a4098, rightCol:0x3a2868, roofCol:0x241840, roofTrim:0x8070e0,
+      winCol:0x80a0ff, stories:3,
       detail(ctx, c) {
         // Tower spire from roof center
         const mx = (c.fT.x+c.bT.x)/2, my = Math.min(c.lT.y,c.rT.y);
@@ -169,8 +168,8 @@ export class BootScene extends Phaser.Scene {
 
     // ── TAVERN (Mira) — warm wood, amber windows ──────────────────────────
     this.makeBuilding('bld_tavern', 4, 4, 72, {
-      leftCol:0x3e2a18, rightCol:0x2a1c0e, roofCol:0x241508, roofTrim:0x6a3818,
-      winCol:0xffb030, stories:2,
+      leftCol:0x8a5a28, rightCol:0x5c3a18, roofCol:0x3c2408, roofTrim:0xc08040,
+      winCol:0xffc040, stories:2,
       detail(ctx, c) {
         // Hanging sign
         const sx = c.fT.x + 0.15*4*32, sy = c.fT.y + 24;
@@ -191,8 +190,8 @@ export class BootScene extends Phaser.Scene {
 
     // ── CLOCKTOWER (Orin) — tall stone, lantern top ───────────────────────
     this.makeBuilding('bld_clocktower', 2, 2, 144, {
-      leftCol:0x28222e, rightCol:0x1c1820, roofCol:0x141018, roofTrim:0x6a6080,
-      winCol:0x90a0c0, stories:4,
+      leftCol:0x585070, rightCol:0x3a3450, roofCol:0x282038, roofTrim:0xa090d0,
+      winCol:0xb0c0e0, stories:4,
       detail(ctx, c) {
         // Clock face on left face
         const cfx = c.fG.x + 0.5*2*32, cfy = c.fG.y - 0.5*2*16 - 0.75*144;
@@ -218,8 +217,8 @@ export class BootScene extends Phaser.Scene {
 
     // ── SHRINE (Cael) — ember-glow, ornate ───────────────────────────────
     this.makeBuilding('bld_shrine', 4, 3, 72, {
-      leftCol:0x2a1e1a, rightCol:0x1c1410, roofCol:0x180c08, roofTrim:0xff4010,
-      winCol:0xff5010, stories:2,
+      leftCol:0x703028, rightCol:0x4a1e18, roofCol:0x2a100c, roofTrim:0xff6030,
+      winCol:0xff7040, stories:2,
       detail(ctx, c) {
         // Ember flame at roof peak
         const ex = (c.fT.x+c.bT.x)/2, ey = Math.min(c.lT.y, c.rT.y);
@@ -237,8 +236,8 @@ export class BootScene extends Phaser.Scene {
 
     // ── GATEHOUSE (Joren) — heavy stone arch ─────────────────────────────
     this.makeBuilding('bld_gatehouse', 6, 3, 64, {
-      leftCol:0x2a2428, rightCol:0x1c181e, roofCol:0x181418, roofTrim:0x504858,
-      winCol:0x8090a0, stories:2,
+      leftCol:0x686080, rightCol:0x484060, roofCol:0x302840, roofTrim:0xa098c0,
+      winCol:0xa0b0c8, stories:2,
       detail(ctx, c) {
         // Gate arch on left face
         const gx = c.fG.x + 0.5*6*32, gy = c.fG.y - 0.5*6*16;
@@ -266,8 +265,8 @@ export class BootScene extends Phaser.Scene {
 
     // ── TAILOR (Theo) — green-trim wood ──────────────────────────────────
     this.makeBuilding('bld_tailor', 4, 4, 68, {
-      leftCol:0x2e2418, rightCol:0x201810, roofCol:0x1c1008, roofTrim:0x405820,
-      winCol:0xa0d060, stories:2,
+      leftCol:0x786030, rightCol:0x503e18, roofCol:0x302008, roofTrim:0x70a030,
+      winCol:0xb0e060, stories:2,
       detail(ctx, c) {
         // Green awning
         const ax = c.fG.x + 0.5*4*32, ay = c.fG.y - 0.5*4*16 - 0.35*68;
@@ -283,8 +282,8 @@ export class BootScene extends Phaser.Scene {
 
     // ── APOTHECARY (Vesna) — green stone, herb glow ───────────────────────
     this.makeBuilding('bld_apothecary', 4, 4, 68, {
-      leftCol:0x182820, rightCol:0x101c14, roofCol:0x0c140e, roofTrim:0x204820,
-      winCol:0x40c060, stories:2,
+      leftCol:0x306040, rightCol:0x1e3e28, roofCol:0x101e14, roofTrim:0x509060,
+      winCol:0x60d080, stories:2,
       detail(ctx, c) {
         // Hanging herb bundles
         [0.25, 0.65].forEach(t => {
@@ -620,271 +619,6 @@ export class BootScene extends Phaser.Scene {
       tex.add(`walk_${dir}_1`, 0, fw,      d * fh, fw, fh);
       tex.add(`walk_${dir}_2`, 0, fw * 2,  d * fh, fw, fh);
       tex.add(`walk_${dir}_3`, 0, fw * 3,  d * fh, fw, fh);
-    }
-  }
-
-  // ── NPC sprites (20×30, 2 frames) ───────────────────────────────────────────
-  private generateNPCs() {
-    const fw = 20, fh = 30;
-
-    type PropFn = (ctx: CanvasRenderingContext2D, ox: number, bob: number, f: number) => void;
-    const configs: Array<{ key:string; skin:string; hair:string; tunic:string; accent:string; drawProps:PropFn }> = [
-      {
-        key:'npc_baelor', skin:'#c07850', hair:'#3a1808', tunic:'#602818', accent:'#9a4820',
-        drawProps(ctx, ox, bob, f) {
-          // Leather apron
-          ctx.fillStyle = '#9a5820';
-          for (let r = 0; r < 10; r++) for (let cc = 5; cc < 15; cc++) ctx.fillRect(ox+cc, bob+9+r, 1, 1);
-          ctx.fillStyle = '#6a3810'; ctx.fillRect(ox+9, bob+9, 2, 2); // apron tie
-          ctx.fillStyle = '#c07850'; ctx.fillRect(ox+18, bob+9, 2, 9); // right arm
-          if (f === 0) {
-            // Hammer resting at side
-            ctx.fillStyle = '#888'; ctx.fillRect(ox+15, bob+14, 5, 3); // head
-            ctx.fillStyle = '#b0b0b0'; ctx.fillRect(ox+15, bob+14, 5, 1); // shine
-            ctx.fillStyle = '#7a5028'; ctx.fillRect(ox+17, bob+16, 2, 8); // handle
-          } else {
-            // Hammer raised — striking pose, body leaning
-            ctx.fillStyle = '#c07850'; ctx.fillRect(ox+18, bob+2, 2, 9); // arm raised
-            ctx.fillStyle = '#7a5028'; ctx.fillRect(ox+17, bob+0, 2, 3); // handle tip
-            ctx.fillStyle = '#909090'; ctx.fillRect(ox+14, bob+0, 6, 3); // head
-            ctx.fillStyle = '#c0c0c0'; ctx.fillRect(ox+14, bob+0, 6, 1); // shine
-            // Sparks
-            ctx.fillStyle = '#ffb020'; ctx.fillRect(ox+13, bob+3, 1, 1);
-            ctx.fillStyle = '#ff8010'; ctx.fillRect(ox+12, bob+4, 1, 1);
-            ctx.fillStyle = '#ffc040'; ctx.fillRect(ox+15, bob+2, 1, 1);
-          }
-        }
-      },
-      {
-        key:'npc_elara', skin:'#d0b090', hair:'#8a7020', tunic:'#1e2e70', accent:'#3050b0',
-        drawProps(ctx, ox, bob, f) {
-          // Scholar robe (floor-length)
-          ctx.fillStyle = '#18245a';
-          for (let r = 0; r < 8; r++) for (let cc = 3; cc < 17; cc++) ctx.fillRect(ox+cc, bob+18+r, 1, 1);
-          ctx.fillStyle = '#3050b0';
-          for (let cc = 3; cc < 17; cc++) ctx.fillRect(ox+cc, bob+18, 1, 1);
-          ctx.fillRect(ox+3, bob+18, 1, 8); ctx.fillRect(ox+16, bob+18, 1, 8); // robe trim
-          if (f === 0) {
-            // Tome held at chest
-            ctx.fillStyle = '#4a2010'; ctx.fillRect(ox+3, bob+10, 7, 8); // cover
-            ctx.fillStyle = '#e0d0b0'; ctx.fillRect(ox+4, bob+11, 5, 6); // pages
-            ctx.fillStyle = '#2a1408'; ctx.fillRect(ox+7, bob+11, 1, 6); // spine
-            ctx.fillStyle = '#c09030'; ctx.fillRect(ox+3, bob+10, 1, 8); // binding
-          } else {
-            // Arcane orb levitating — lecturing pose
-            ctx.fillStyle = '#6080ff';
-            ctx.beginPath(); ctx.arc(ox+5, bob+11, 5, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#a0c0ff';
-            ctx.beginPath(); ctx.arc(ox+4, bob+10, 3, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.fillRect(ox+3, bob+8, 1, 1); // glint
-            ctx.fillStyle = '#d0b090'; ctx.fillRect(ox+8, bob+9, 1, 4); // pointing finger
-            // Sparkles
-            ctx.fillStyle = '#c0d0ff'; ctx.fillRect(ox+1, bob+6, 1, 1); ctx.fillRect(ox+10, bob+7, 1, 1);
-          }
-        }
-      },
-      {
-        key:'npc_mira', skin:'#c08870', hair:'#3a1818', tunic:'#6a3848', accent:'#8a5068',
-        drawProps(ctx, ox, bob, f) {
-          ctx.fillStyle = '#804858'; // apron
-          for (let r = 0; r < 9; r++) for (let cc = 5; cc < 15; cc++) ctx.fillRect(ox+cc, bob+10+r, 1, 1);
-          if (f === 0) {
-            ctx.fillStyle = '#8a6030'; ctx.fillRect(ox+3, bob+17, 12, 2); // tray
-            ctx.fillStyle = '#b08040'; ctx.fillRect(ox+3, bob+16, 12, 1);
-            ctx.fillStyle = '#6a4020'; ctx.fillRect(ox+7, bob+13, 4, 4); // mug
-            ctx.fillStyle = '#503010'; ctx.fillRect(ox+10, bob+14, 1, 2); // handle
-            ctx.fillStyle = '#70c040'; ctx.fillRect(ox+7, bob+13, 4, 1); // foam
-          } else {
-            // Tray raised (serving)
-            ctx.fillStyle = '#c08870'; ctx.fillRect(ox+1, bob+5, 2, 10); // arm raised
-            ctx.fillStyle = '#8a6030'; ctx.fillRect(ox+1, bob+5, 10, 2); // tray
-            ctx.fillStyle = '#b08040'; ctx.fillRect(ox+1, bob+4, 10, 1);
-            ctx.fillStyle = '#6a4020'; ctx.fillRect(ox+4, bob+2, 4, 3); // mug raised
-            ctx.fillStyle = '#70c040'; ctx.fillRect(ox+4, bob+2, 4, 1); // foam
-          }
-        }
-      },
-      {
-        key:'npc_orin', skin:'#b09070', hair:'#a0a0b0', tunic:'#384050', accent:'#506080',
-        drawProps(ctx, ox, bob, f) {
-          ctx.fillStyle = '#2c3040'; // long robe
-          for (let r = 0; r < 8; r++) for (let cc = 3; cc < 17; cc++) ctx.fillRect(ox+cc, bob+18+r, 1, 1);
-          ctx.fillStyle = '#607090';
-          for (let cc = 3; cc < 17; cc++) ctx.fillRect(ox+cc, bob+18, 1, 1); // robe trim
-          if (f === 0) {
-            // Pocket watch in palm
-            ctx.fillStyle = '#c0b080'; ctx.fillRect(ox+3, bob+13, 5, 5);
-            ctx.fillStyle = '#d0c090'; ctx.fillRect(ox+4, bob+14, 3, 3);
-            ctx.fillStyle = '#1a1a2a'; ctx.fillRect(ox+5, bob+14, 1, 2); ctx.fillRect(ox+5, bob+14, 2, 1);
-            ctx.fillStyle = '#c0b080'; ctx.fillRect(ox+5, bob+13, 1, 1); // crown
-          } else {
-            // Arm extended, gazing at stars
-            ctx.fillStyle = '#b09070'; ctx.fillRect(ox+1, bob+6, 2, 8); ctx.fillRect(ox+1, bob+5, 1, 2);
-            ctx.fillStyle = '#c0d8ff'; // constellation
-            ctx.fillRect(ox+1, bob+2, 1, 1); ctx.fillRect(ox+4, bob+1, 1, 1);
-            ctx.fillRect(ox+2, bob+4, 1, 1); ctx.fillRect(ox+0, bob+5, 1, 1);
-            ctx.fillRect(ox+3, bob+0, 1, 1);
-          }
-        }
-      },
-      {
-        key:'npc_theo', skin:'#d8b888', hair:'#1a1408', tunic:'#3a4e1a', accent:'#526a28',
-        drawProps(ctx, ox, bob, f) {
-          ctx.fillStyle = '#283610'; // green vest
-          for (let r = 0; r < 8; r++) for (let cc = 6; cc < 14; cc++) ctx.fillRect(ox+cc, bob+9+r, 1, 1);
-          if (f === 0) {
-            ctx.fillStyle = '#d8d8cc'; ctx.fillRect(ox+3, bob+14, 7, 4); // cloth
-            ctx.fillStyle = '#c0c0c0'; ctx.fillRect(ox+5, bob+10, 1, 5); // needle
-            ctx.fillStyle = '#c0a020'; ctx.fillRect(ox+5, bob+14, 1, 1); // thread
-          } else {
-            // Measuring tape extended
-            ctx.fillStyle = '#d8b888'; ctx.fillRect(ox+1, bob+7, 2, 8);
-            ctx.fillStyle = '#c8a020'; ctx.fillRect(ox+1, bob+6, 14, 2); // tape
-            ctx.fillStyle = '#e0c040'; ctx.fillRect(ox+1, bob+6, 14, 1);
-            ctx.fillStyle = '#604010';
-            for (let i = 1; i < 14; i += 3) ctx.fillRect(ox+1+i, bob+7, 1, 1); // marks
-          }
-        }
-      },
-      {
-        key:'npc_vesna', skin:'#c8b090', hair:'#1a2818', tunic:'#2a5030', accent:'#3a7040',
-        drawProps(ctx, ox, bob, f) {
-          if (f === 0) {
-            ctx.fillStyle = '#1a3818'; ctx.fillRect(ox+3, bob+10, 4, 8); // bottle
-            ctx.fillStyle = '#40c060'; ctx.fillRect(ox+4, bob+11, 2, 6);
-            ctx.fillStyle = '#60e080'; ctx.fillRect(ox+4, bob+11, 2, 1); // meniscus
-            ctx.fillStyle = '#805020'; ctx.fillRect(ox+4, bob+9, 2, 2); // cork
-            ctx.fillStyle = '#3a6828'; // herb sprigs
-            ctx.fillRect(ox+14, bob+10, 1, 6); ctx.fillRect(ox+13, bob+10, 3, 1); ctx.fillRect(ox+13, bob+12, 3, 1);
-          } else {
-            // Stirring a cauldron
-            ctx.fillStyle = '#c8b090'; ctx.fillRect(ox+1, bob+6, 2, 8);
-            ctx.fillStyle = '#2a2010'; ctx.fillRect(ox+1, bob+20, 9, 7); // cauldron
-            ctx.fillStyle = '#3a3018'; ctx.fillRect(ox+2, bob+19, 7, 2); // rim
-            ctx.fillStyle = '#30a040'; ctx.fillRect(ox+2, bob+21, 7, 5); // contents
-            ctx.fillStyle = '#50c060'; ctx.fillRect(ox+3, bob+20, 2, 2); // bubble
-            ctx.fillRect(ox+6, bob+21, 2, 1);
-            ctx.fillStyle = '#808080'; ctx.fillRect(ox+2, bob+14, 1, 7); // ladle handle
-            ctx.fillStyle = '#a0a0a0'; ctx.fillRect(ox+1, bob+20, 3, 2); // ladle bowl
-          }
-        }
-      },
-      {
-        key:'npc_cael', skin:'#b08870', hair:'#080808', tunic:'#503818', accent:'#7a5428',
-        drawProps(ctx, ox, bob, f) {
-          ctx.fillStyle = '#3a2808'; // monk robe (wide)
-          for (let r = 0; r < 8; r++) for (let cc = 2; cc < 18; cc++) ctx.fillRect(ox+cc, bob+17+r, 1, 1);
-          ctx.fillStyle = '#c08030'; // gold trim
-          ctx.fillRect(ox+2, bob+17, 16, 1);
-          ctx.fillRect(ox+2, bob+17, 1, 8); ctx.fillRect(ox+17, bob+17, 1, 8);
-          if (f === 0) {
-            ctx.fillStyle = '#b08870'; ctx.fillRect(ox+5, bob+14, 10, 4); // folded hands
-            ctx.fillStyle = '#c09030'; // prayer beads
-            for (let i = 0; i < 8; i++) ctx.fillRect(ox+5+i, bob+14, 1, 1);
-            ctx.fillStyle = '#ff4010'; ctx.fillRect(ox+9, bob+10, 2, 1); // ember symbol
-            ctx.fillStyle = '#ff7030'; ctx.fillRect(ox+9, bob+11, 2, 2);
-            ctx.fillStyle = '#ffa050'; ctx.fillRect(ox+9, bob+13, 2, 2);
-          } else {
-            // Arms raised in blessing
-            ctx.fillStyle = '#b08870'; ctx.fillRect(ox+0, bob+5, 2, 9); ctx.fillRect(ox+18, bob+5, 2, 9);
-            ctx.fillStyle = 'rgba(255,160,40,0.4)';
-            ctx.beginPath(); ctx.arc(ox+10, bob+4, 9, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = 'rgba(255,220,80,0.3)';
-            ctx.beginPath(); ctx.arc(ox+10, bob+4, 5, 0, Math.PI*2); ctx.fill();
-          }
-        }
-      },
-      {
-        key:'npc_joren', skin:'#b08060', hair:'#202830', tunic:'#364050', accent:'#506070',
-        drawProps(ctx, ox, bob, f) {
-          ctx.fillStyle = '#38485a'; // chest plate
-          for (let r = 0; r < 8; r++) for (let cc = 4; cc < 16; cc++) ctx.fillRect(ox+cc, bob+9+r, 1, 1);
-          ctx.fillStyle = '#485870'; for (let cc = 4; cc < 16; cc++) ctx.fillRect(ox+cc, bob+9, 1, 1);
-          ctx.fillStyle = '#485870'; ctx.fillRect(ox+0, bob+9, 3, 5); ctx.fillRect(ox+17, bob+9, 3, 5); // pauldrons
-          ctx.fillStyle = '#708090'; // rivets
-          ctx.fillRect(ox+5, bob+11, 1, 1); ctx.fillRect(ox+14, bob+11, 1, 1);
-          ctx.fillRect(ox+5, bob+14, 1, 1); ctx.fillRect(ox+14, bob+14, 1, 1);
-          if (f === 0) {
-            ctx.fillStyle = '#607080'; ctx.fillRect(ox+15, bob+15, 2, 9); // blade
-            ctx.fillStyle = '#c0a030'; ctx.fillRect(ox+13, bob+15, 6, 2); // guard
-            ctx.fillStyle = '#805040'; ctx.fillRect(ox+15, bob+17, 2, 5); // grip
-            ctx.fillStyle = '#b09070'; ctx.fillRect(ox+14, bob+17, 4, 4); // hand
-          } else {
-            // Alert stance — arm forward, sword drawn
-            ctx.fillStyle = '#38485a'; ctx.fillRect(ox+0, bob+9, 3, 5); // gauntlet
-            ctx.fillStyle = '#607080'; ctx.fillRect(ox+16, bob+12, 2, 11); // sword
-            ctx.fillStyle = '#c0a030'; ctx.fillRect(ox+14, bob+12, 6, 2); // guard
-            ctx.fillStyle = '#a0b0c0'; ctx.fillRect(ox+16, bob+12, 1, 11); // blade edge
-          }
-        }
-      },
-    ];
-
-    for (const cfg of configs) {
-      const c = this.textures.createCanvas(cfg.key, fw * 2, fh);
-      const el = c!.getSourceImage() as HTMLCanvasElement;
-      const ctx = el.getContext('2d')!;
-
-      const px = (x: number, y: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
-
-      for (let f = 0; f < 2; f++) {
-        const ox = f * fw;
-        const bob = f === 1 ? 1 : 0;
-
-        // Boots
-        ctx.fillStyle = '#1e1008'; ctx.fillRect(ox+3, bob+25, 5, 4); ctx.fillRect(ox+11, bob+25, 5, 4);
-        ctx.fillStyle = '#382018'; ctx.fillRect(ox+3, bob+25, 5, 1); ctx.fillRect(ox+11, bob+25, 5, 1);
-
-        // Legs
-        ctx.fillStyle = '#2a3040'; ctx.fillRect(ox+3, bob+19, 5, 6); ctx.fillRect(ox+12, bob+19, 5, 6);
-        ctx.fillStyle = '#3a4050'; ctx.fillRect(ox+3, bob+19, 5, 1); ctx.fillRect(ox+12, bob+19, 5, 1);
-
-        // Tunic
-        ctx.fillStyle = cfg.tunic;
-        for (let r = 0; r < 10; r++) for (let cc = 2; cc < 18; cc++) ctx.fillRect(ox+cc, bob+9+r, 1, 1);
-        ctx.fillStyle = cfg.accent;
-        for (let cc = 2; cc < 18; cc++) ctx.fillRect(ox+cc, bob+9, 1, 1);
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        for (let cc = 2; cc < 18; cc++) ctx.fillRect(ox+cc, bob+18, 1, 1);
-
-        // Arms (default — overridden by drawProps where needed)
-        ctx.fillStyle = cfg.skin; ctx.fillRect(ox+0, bob+9, 2, 9); ctx.fillRect(ox+18, bob+9, 2, 9);
-
-        // Neck
-        ctx.fillStyle = cfg.skin; ctx.fillRect(ox+7, bob+8, 6, 1);
-
-        // Head
-        ctx.fillStyle = cfg.skin;
-        for (let r = 0; r < 7; r++) for (let cc = 5; cc < 15; cc++) ctx.fillRect(ox+cc, bob+1+r, 1, 1);
-        ctx.fillStyle = 'rgba(0,0,0,0.1)';
-        for (let r = 0; r < 7; r++) ctx.fillRect(ox+13, bob+1+r, 2, 1); // shadow
-        ctx.fillStyle = 'rgba(255,255,255,0.1)';
-        for (let r = 0; r < 7; r++) ctx.fillRect(ox+5, bob+1+r, 1, 1); // highlight
-
-        // Hair
-        ctx.fillStyle = cfg.hair;
-        for (let cc = 4; cc < 16; cc++) { ctx.fillRect(ox+cc, bob+0, 1, 1); ctx.fillRect(ox+cc, bob+1, 1, 1); }
-        for (let cc = 4; cc < 6; cc++) { ctx.fillRect(ox+cc, bob+2, 1, 1); ctx.fillRect(ox+cc, bob+3, 1, 1); }
-        for (let cc = 14; cc < 16; cc++) { ctx.fillRect(ox+cc, bob+2, 1, 1); ctx.fillRect(ox+cc, bob+3, 1, 1); }
-
-        // Eyes
-        px(ox+7, bob+4, '#1a1428'); px(ox+8, bob+4, '#1a1428');
-        px(ox+11, bob+4, '#1a1428'); px(ox+12, bob+4, '#1a1428');
-        px(ox+7, bob+3, '#f0f0f0'); px(ox+11, bob+3, '#f0f0f0');
-
-        // Mouth & nose
-        px(ox+8, bob+6, '#804040'); px(ox+9, bob+6, '#804040');
-        px(ox+9, bob+5, '#a07060');
-
-        cfg.drawProps(ctx, ox, bob, f);
-      }
-
-      c!.refresh();
-
-      // Register frames
-      const tex = this.textures.get(cfg.key);
-      tex.add('0', 0, 0,      0, fw, fh);
-      tex.add('1', 0, fw,     0, fw, fh);
     }
   }
 
