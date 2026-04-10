@@ -623,68 +623,268 @@ export class BootScene extends Phaser.Scene {
     }
   }
 
-  // ── NPC sprites (16×24) ───────────────────────────────────────────────────
+  // ── NPC sprites (20×30, 2 frames) ───────────────────────────────────────────
   private generateNPCs() {
-    const configs = [
-      { key: 'npc_baelor', skin:'#c08060', hair:'#4a2010', tunic:'#7a3820', apron:'#9a6030' },
-      { key: 'npc_elara',  skin:'#d0b090', hair:'#8a7020', tunic:'#2a4080', robe:'#1a2860' },
-      { key: 'npc_mira',   skin:'#c89070', hair:'#3a1818', tunic:'#6a3850', apron:'#8a5068' },
-      { key: 'npc_theo',   skin:'#d8b888', hair:'#1a1408', tunic:'#486020', vest:'#304010' },
-      { key: 'npc_orin',   skin:'#b09070', hair:'#a0a0b0', tunic:'#505870', robe:'#3a4060' },
-      { key: 'npc_vesna',  skin:'#c8b090', hair:'#1a2818', tunic:'#2a6040', herb:'#3a8050' },
-      { key: 'npc_cael',   skin:'#b08870', hair:'#080808', tunic:'#604820', robe:'#402e10' },
-      { key: 'npc_joren',  skin:'#b08060', hair:'#202830', tunic:'#384860', armor:'#4a5878' },
+    const fw = 20, fh = 30;
+
+    type PropFn = (ctx: CanvasRenderingContext2D, ox: number, bob: number, f: number) => void;
+    const configs: Array<{ key:string; skin:string; hair:string; tunic:string; accent:string; drawProps:PropFn }> = [
+      {
+        key:'npc_baelor', skin:'#c07850', hair:'#3a1808', tunic:'#602818', accent:'#9a4820',
+        drawProps(ctx, ox, bob, f) {
+          // Leather apron
+          ctx.fillStyle = '#9a5820';
+          for (let r = 0; r < 10; r++) for (let cc = 5; cc < 15; cc++) ctx.fillRect(ox+cc, bob+9+r, 1, 1);
+          ctx.fillStyle = '#6a3810'; ctx.fillRect(ox+9, bob+9, 2, 2); // apron tie
+          ctx.fillStyle = '#c07850'; ctx.fillRect(ox+18, bob+9, 2, 9); // right arm
+          if (f === 0) {
+            // Hammer resting at side
+            ctx.fillStyle = '#888'; ctx.fillRect(ox+15, bob+14, 5, 3); // head
+            ctx.fillStyle = '#b0b0b0'; ctx.fillRect(ox+15, bob+14, 5, 1); // shine
+            ctx.fillStyle = '#7a5028'; ctx.fillRect(ox+17, bob+16, 2, 8); // handle
+          } else {
+            // Hammer raised — striking pose, body leaning
+            ctx.fillStyle = '#c07850'; ctx.fillRect(ox+18, bob+2, 2, 9); // arm raised
+            ctx.fillStyle = '#7a5028'; ctx.fillRect(ox+17, bob+0, 2, 3); // handle tip
+            ctx.fillStyle = '#909090'; ctx.fillRect(ox+14, bob+0, 6, 3); // head
+            ctx.fillStyle = '#c0c0c0'; ctx.fillRect(ox+14, bob+0, 6, 1); // shine
+            // Sparks
+            ctx.fillStyle = '#ffb020'; ctx.fillRect(ox+13, bob+3, 1, 1);
+            ctx.fillStyle = '#ff8010'; ctx.fillRect(ox+12, bob+4, 1, 1);
+            ctx.fillStyle = '#ffc040'; ctx.fillRect(ox+15, bob+2, 1, 1);
+          }
+        }
+      },
+      {
+        key:'npc_elara', skin:'#d0b090', hair:'#8a7020', tunic:'#1e2e70', accent:'#3050b0',
+        drawProps(ctx, ox, bob, f) {
+          // Scholar robe (floor-length)
+          ctx.fillStyle = '#18245a';
+          for (let r = 0; r < 8; r++) for (let cc = 3; cc < 17; cc++) ctx.fillRect(ox+cc, bob+18+r, 1, 1);
+          ctx.fillStyle = '#3050b0';
+          for (let cc = 3; cc < 17; cc++) ctx.fillRect(ox+cc, bob+18, 1, 1);
+          ctx.fillRect(ox+3, bob+18, 1, 8); ctx.fillRect(ox+16, bob+18, 1, 8); // robe trim
+          if (f === 0) {
+            // Tome held at chest
+            ctx.fillStyle = '#4a2010'; ctx.fillRect(ox+3, bob+10, 7, 8); // cover
+            ctx.fillStyle = '#e0d0b0'; ctx.fillRect(ox+4, bob+11, 5, 6); // pages
+            ctx.fillStyle = '#2a1408'; ctx.fillRect(ox+7, bob+11, 1, 6); // spine
+            ctx.fillStyle = '#c09030'; ctx.fillRect(ox+3, bob+10, 1, 8); // binding
+          } else {
+            // Arcane orb levitating — lecturing pose
+            ctx.fillStyle = '#6080ff';
+            ctx.beginPath(); ctx.arc(ox+5, bob+11, 5, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#a0c0ff';
+            ctx.beginPath(); ctx.arc(ox+4, bob+10, 3, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.fillRect(ox+3, bob+8, 1, 1); // glint
+            ctx.fillStyle = '#d0b090'; ctx.fillRect(ox+8, bob+9, 1, 4); // pointing finger
+            // Sparkles
+            ctx.fillStyle = '#c0d0ff'; ctx.fillRect(ox+1, bob+6, 1, 1); ctx.fillRect(ox+10, bob+7, 1, 1);
+          }
+        }
+      },
+      {
+        key:'npc_mira', skin:'#c08870', hair:'#3a1818', tunic:'#6a3848', accent:'#8a5068',
+        drawProps(ctx, ox, bob, f) {
+          ctx.fillStyle = '#804858'; // apron
+          for (let r = 0; r < 9; r++) for (let cc = 5; cc < 15; cc++) ctx.fillRect(ox+cc, bob+10+r, 1, 1);
+          if (f === 0) {
+            ctx.fillStyle = '#8a6030'; ctx.fillRect(ox+3, bob+17, 12, 2); // tray
+            ctx.fillStyle = '#b08040'; ctx.fillRect(ox+3, bob+16, 12, 1);
+            ctx.fillStyle = '#6a4020'; ctx.fillRect(ox+7, bob+13, 4, 4); // mug
+            ctx.fillStyle = '#503010'; ctx.fillRect(ox+10, bob+14, 1, 2); // handle
+            ctx.fillStyle = '#70c040'; ctx.fillRect(ox+7, bob+13, 4, 1); // foam
+          } else {
+            // Tray raised (serving)
+            ctx.fillStyle = '#c08870'; ctx.fillRect(ox+1, bob+5, 2, 10); // arm raised
+            ctx.fillStyle = '#8a6030'; ctx.fillRect(ox+1, bob+5, 10, 2); // tray
+            ctx.fillStyle = '#b08040'; ctx.fillRect(ox+1, bob+4, 10, 1);
+            ctx.fillStyle = '#6a4020'; ctx.fillRect(ox+4, bob+2, 4, 3); // mug raised
+            ctx.fillStyle = '#70c040'; ctx.fillRect(ox+4, bob+2, 4, 1); // foam
+          }
+        }
+      },
+      {
+        key:'npc_orin', skin:'#b09070', hair:'#a0a0b0', tunic:'#384050', accent:'#506080',
+        drawProps(ctx, ox, bob, f) {
+          ctx.fillStyle = '#2c3040'; // long robe
+          for (let r = 0; r < 8; r++) for (let cc = 3; cc < 17; cc++) ctx.fillRect(ox+cc, bob+18+r, 1, 1);
+          ctx.fillStyle = '#607090';
+          for (let cc = 3; cc < 17; cc++) ctx.fillRect(ox+cc, bob+18, 1, 1); // robe trim
+          if (f === 0) {
+            // Pocket watch in palm
+            ctx.fillStyle = '#c0b080'; ctx.fillRect(ox+3, bob+13, 5, 5);
+            ctx.fillStyle = '#d0c090'; ctx.fillRect(ox+4, bob+14, 3, 3);
+            ctx.fillStyle = '#1a1a2a'; ctx.fillRect(ox+5, bob+14, 1, 2); ctx.fillRect(ox+5, bob+14, 2, 1);
+            ctx.fillStyle = '#c0b080'; ctx.fillRect(ox+5, bob+13, 1, 1); // crown
+          } else {
+            // Arm extended, gazing at stars
+            ctx.fillStyle = '#b09070'; ctx.fillRect(ox+1, bob+6, 2, 8); ctx.fillRect(ox+1, bob+5, 1, 2);
+            ctx.fillStyle = '#c0d8ff'; // constellation
+            ctx.fillRect(ox+1, bob+2, 1, 1); ctx.fillRect(ox+4, bob+1, 1, 1);
+            ctx.fillRect(ox+2, bob+4, 1, 1); ctx.fillRect(ox+0, bob+5, 1, 1);
+            ctx.fillRect(ox+3, bob+0, 1, 1);
+          }
+        }
+      },
+      {
+        key:'npc_theo', skin:'#d8b888', hair:'#1a1408', tunic:'#3a4e1a', accent:'#526a28',
+        drawProps(ctx, ox, bob, f) {
+          ctx.fillStyle = '#283610'; // green vest
+          for (let r = 0; r < 8; r++) for (let cc = 6; cc < 14; cc++) ctx.fillRect(ox+cc, bob+9+r, 1, 1);
+          if (f === 0) {
+            ctx.fillStyle = '#d8d8cc'; ctx.fillRect(ox+3, bob+14, 7, 4); // cloth
+            ctx.fillStyle = '#c0c0c0'; ctx.fillRect(ox+5, bob+10, 1, 5); // needle
+            ctx.fillStyle = '#c0a020'; ctx.fillRect(ox+5, bob+14, 1, 1); // thread
+          } else {
+            // Measuring tape extended
+            ctx.fillStyle = '#d8b888'; ctx.fillRect(ox+1, bob+7, 2, 8);
+            ctx.fillStyle = '#c8a020'; ctx.fillRect(ox+1, bob+6, 14, 2); // tape
+            ctx.fillStyle = '#e0c040'; ctx.fillRect(ox+1, bob+6, 14, 1);
+            ctx.fillStyle = '#604010';
+            for (let i = 1; i < 14; i += 3) ctx.fillRect(ox+1+i, bob+7, 1, 1); // marks
+          }
+        }
+      },
+      {
+        key:'npc_vesna', skin:'#c8b090', hair:'#1a2818', tunic:'#2a5030', accent:'#3a7040',
+        drawProps(ctx, ox, bob, f) {
+          if (f === 0) {
+            ctx.fillStyle = '#1a3818'; ctx.fillRect(ox+3, bob+10, 4, 8); // bottle
+            ctx.fillStyle = '#40c060'; ctx.fillRect(ox+4, bob+11, 2, 6);
+            ctx.fillStyle = '#60e080'; ctx.fillRect(ox+4, bob+11, 2, 1); // meniscus
+            ctx.fillStyle = '#805020'; ctx.fillRect(ox+4, bob+9, 2, 2); // cork
+            ctx.fillStyle = '#3a6828'; // herb sprigs
+            ctx.fillRect(ox+14, bob+10, 1, 6); ctx.fillRect(ox+13, bob+10, 3, 1); ctx.fillRect(ox+13, bob+12, 3, 1);
+          } else {
+            // Stirring a cauldron
+            ctx.fillStyle = '#c8b090'; ctx.fillRect(ox+1, bob+6, 2, 8);
+            ctx.fillStyle = '#2a2010'; ctx.fillRect(ox+1, bob+20, 9, 7); // cauldron
+            ctx.fillStyle = '#3a3018'; ctx.fillRect(ox+2, bob+19, 7, 2); // rim
+            ctx.fillStyle = '#30a040'; ctx.fillRect(ox+2, bob+21, 7, 5); // contents
+            ctx.fillStyle = '#50c060'; ctx.fillRect(ox+3, bob+20, 2, 2); // bubble
+            ctx.fillRect(ox+6, bob+21, 2, 1);
+            ctx.fillStyle = '#808080'; ctx.fillRect(ox+2, bob+14, 1, 7); // ladle handle
+            ctx.fillStyle = '#a0a0a0'; ctx.fillRect(ox+1, bob+20, 3, 2); // ladle bowl
+          }
+        }
+      },
+      {
+        key:'npc_cael', skin:'#b08870', hair:'#080808', tunic:'#503818', accent:'#7a5428',
+        drawProps(ctx, ox, bob, f) {
+          ctx.fillStyle = '#3a2808'; // monk robe (wide)
+          for (let r = 0; r < 8; r++) for (let cc = 2; cc < 18; cc++) ctx.fillRect(ox+cc, bob+17+r, 1, 1);
+          ctx.fillStyle = '#c08030'; // gold trim
+          ctx.fillRect(ox+2, bob+17, 16, 1);
+          ctx.fillRect(ox+2, bob+17, 1, 8); ctx.fillRect(ox+17, bob+17, 1, 8);
+          if (f === 0) {
+            ctx.fillStyle = '#b08870'; ctx.fillRect(ox+5, bob+14, 10, 4); // folded hands
+            ctx.fillStyle = '#c09030'; // prayer beads
+            for (let i = 0; i < 8; i++) ctx.fillRect(ox+5+i, bob+14, 1, 1);
+            ctx.fillStyle = '#ff4010'; ctx.fillRect(ox+9, bob+10, 2, 1); // ember symbol
+            ctx.fillStyle = '#ff7030'; ctx.fillRect(ox+9, bob+11, 2, 2);
+            ctx.fillStyle = '#ffa050'; ctx.fillRect(ox+9, bob+13, 2, 2);
+          } else {
+            // Arms raised in blessing
+            ctx.fillStyle = '#b08870'; ctx.fillRect(ox+0, bob+5, 2, 9); ctx.fillRect(ox+18, bob+5, 2, 9);
+            ctx.fillStyle = 'rgba(255,160,40,0.4)';
+            ctx.beginPath(); ctx.arc(ox+10, bob+4, 9, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,220,80,0.3)';
+            ctx.beginPath(); ctx.arc(ox+10, bob+4, 5, 0, Math.PI*2); ctx.fill();
+          }
+        }
+      },
+      {
+        key:'npc_joren', skin:'#b08060', hair:'#202830', tunic:'#364050', accent:'#506070',
+        drawProps(ctx, ox, bob, f) {
+          ctx.fillStyle = '#38485a'; // chest plate
+          for (let r = 0; r < 8; r++) for (let cc = 4; cc < 16; cc++) ctx.fillRect(ox+cc, bob+9+r, 1, 1);
+          ctx.fillStyle = '#485870'; for (let cc = 4; cc < 16; cc++) ctx.fillRect(ox+cc, bob+9, 1, 1);
+          ctx.fillStyle = '#485870'; ctx.fillRect(ox+0, bob+9, 3, 5); ctx.fillRect(ox+17, bob+9, 3, 5); // pauldrons
+          ctx.fillStyle = '#708090'; // rivets
+          ctx.fillRect(ox+5, bob+11, 1, 1); ctx.fillRect(ox+14, bob+11, 1, 1);
+          ctx.fillRect(ox+5, bob+14, 1, 1); ctx.fillRect(ox+14, bob+14, 1, 1);
+          if (f === 0) {
+            ctx.fillStyle = '#607080'; ctx.fillRect(ox+15, bob+15, 2, 9); // blade
+            ctx.fillStyle = '#c0a030'; ctx.fillRect(ox+13, bob+15, 6, 2); // guard
+            ctx.fillStyle = '#805040'; ctx.fillRect(ox+15, bob+17, 2, 5); // grip
+            ctx.fillStyle = '#b09070'; ctx.fillRect(ox+14, bob+17, 4, 4); // hand
+          } else {
+            // Alert stance — arm forward, sword drawn
+            ctx.fillStyle = '#38485a'; ctx.fillRect(ox+0, bob+9, 3, 5); // gauntlet
+            ctx.fillStyle = '#607080'; ctx.fillRect(ox+16, bob+12, 2, 11); // sword
+            ctx.fillStyle = '#c0a030'; ctx.fillRect(ox+14, bob+12, 6, 2); // guard
+            ctx.fillStyle = '#a0b0c0'; ctx.fillRect(ox+16, bob+12, 1, 11); // blade edge
+          }
+        }
+      },
     ];
 
     for (const cfg of configs) {
-      const fw = 16, fh = 24;
       const c = this.textures.createCanvas(cfg.key, fw * 2, fh);
       const el = c!.getSourceImage() as HTMLCanvasElement;
       const ctx = el.getContext('2d')!;
 
-      const px = (x: number, y: number, col: string) => {
-        ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1);
-      };
+      const px = (x: number, y: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
 
       for (let f = 0; f < 2; f++) {
         const ox = f * fw;
         const bob = f === 1 ? 1 : 0;
 
         // Boots
-        for (let r = 0; r < 3; r++) {
-          for (let cc = 3; cc < 7; cc++) px(ox+cc, bob+21+r, '#1e1008');
-          for (let cc = 9; cc < 13; cc++) px(ox+cc, bob+21+r, '#1e1008');
-        }
+        ctx.fillStyle = '#1e1008'; ctx.fillRect(ox+3, bob+25, 5, 4); ctx.fillRect(ox+11, bob+25, 5, 4);
+        ctx.fillStyle = '#382018'; ctx.fillRect(ox+3, bob+25, 5, 1); ctx.fillRect(ox+11, bob+25, 5, 1);
+
         // Legs
-        for (let r = 0; r < 4; r++) {
-          for (let cc = 3; cc < 7; cc++) px(ox+cc, bob+17+r, '#303848');
-          for (let cc = 9; cc < 13; cc++) px(ox+cc, bob+17+r, '#303848');
-        }
-        // Tunic body
-        for (let r = 0; r < 8; r++) {
-          for (let cc = 2; cc < 14; cc++) px(ox+cc, bob+9+r, cfg.tunic);
-        }
-        // Arms (skin)
-        for (let r = 0; r < 6; r++) {
-          px(ox+1, bob+10+r, cfg.skin); px(ox+0, bob+10+r, cfg.skin);
-          px(ox+14, bob+10+r, cfg.skin); px(ox+15, bob+10+r, cfg.skin);
-        }
+        ctx.fillStyle = '#2a3040'; ctx.fillRect(ox+3, bob+19, 5, 6); ctx.fillRect(ox+12, bob+19, 5, 6);
+        ctx.fillStyle = '#3a4050'; ctx.fillRect(ox+3, bob+19, 5, 1); ctx.fillRect(ox+12, bob+19, 5, 1);
+
+        // Tunic
+        ctx.fillStyle = cfg.tunic;
+        for (let r = 0; r < 10; r++) for (let cc = 2; cc < 18; cc++) ctx.fillRect(ox+cc, bob+9+r, 1, 1);
+        ctx.fillStyle = cfg.accent;
+        for (let cc = 2; cc < 18; cc++) ctx.fillRect(ox+cc, bob+9, 1, 1);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        for (let cc = 2; cc < 18; cc++) ctx.fillRect(ox+cc, bob+18, 1, 1);
+
+        // Arms (default — overridden by drawProps where needed)
+        ctx.fillStyle = cfg.skin; ctx.fillRect(ox+0, bob+9, 2, 9); ctx.fillRect(ox+18, bob+9, 2, 9);
+
         // Neck
-        for (let cc = 6; cc < 10; cc++) px(ox+cc, bob+8, cfg.skin);
+        ctx.fillStyle = cfg.skin; ctx.fillRect(ox+7, bob+8, 6, 1);
+
         // Head
-        for (let r = 0; r < 6; r++) {
-          for (let cc = 4; cc < 12; cc++) px(ox+cc, bob+2+r, cfg.skin);
-        }
+        ctx.fillStyle = cfg.skin;
+        for (let r = 0; r < 7; r++) for (let cc = 5; cc < 15; cc++) ctx.fillRect(ox+cc, bob+1+r, 1, 1);
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        for (let r = 0; r < 7; r++) ctx.fillRect(ox+13, bob+1+r, 2, 1); // shadow
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        for (let r = 0; r < 7; r++) ctx.fillRect(ox+5, bob+1+r, 1, 1); // highlight
+
         // Hair
-        for (let cc = 3; cc < 13; cc++) px(ox+cc, bob+1, cfg.hair);
-        for (let cc = 3; cc < 13; cc++) px(ox+cc, bob+2, cfg.hair);
-        for (let cc = 3; cc < 5;  cc++) { px(ox+cc, bob+3, cfg.hair); px(ox+cc, bob+4, cfg.hair); }
-        for (let cc = 11; cc < 13; cc++) { px(ox+cc, bob+3, cfg.hair); px(ox+cc, bob+4, cfg.hair); }
+        ctx.fillStyle = cfg.hair;
+        for (let cc = 4; cc < 16; cc++) { ctx.fillRect(ox+cc, bob+0, 1, 1); ctx.fillRect(ox+cc, bob+1, 1, 1); }
+        for (let cc = 4; cc < 6; cc++) { ctx.fillRect(ox+cc, bob+2, 1, 1); ctx.fillRect(ox+cc, bob+3, 1, 1); }
+        for (let cc = 14; cc < 16; cc++) { ctx.fillRect(ox+cc, bob+2, 1, 1); ctx.fillRect(ox+cc, bob+3, 1, 1); }
+
         // Eyes
-        px(ox+5, bob+5, '#1a1428'); px(ox+6, bob+5, '#1a1428');
-        px(ox+9, bob+5, '#1a1428'); px(ox+10, bob+5, '#1a1428');
+        px(ox+7, bob+4, '#1a1428'); px(ox+8, bob+4, '#1a1428');
+        px(ox+11, bob+4, '#1a1428'); px(ox+12, bob+4, '#1a1428');
+        px(ox+7, bob+3, '#f0f0f0'); px(ox+11, bob+3, '#f0f0f0');
+
+        // Mouth & nose
+        px(ox+8, bob+6, '#804040'); px(ox+9, bob+6, '#804040');
+        px(ox+9, bob+5, '#a07060');
+
+        cfg.drawProps(ctx, ox, bob, f);
       }
+
       c!.refresh();
+
+      // Register frames
+      const tex = this.textures.get(cfg.key);
+      tex.add('0', 0, 0,      0, fw, fh);
+      tex.add('1', 0, fw,     0, fw, fh);
     }
   }
 
@@ -848,15 +1048,15 @@ export class BootScene extends Phaser.Scene {
       g.generateTexture('tile_dungeon_ember', tw, th + sh);
       g.destroy(); }
 
-    // ── Enemy: Grunt (18×26 canvas, 2 frames = 36×26) ──────────────────────
+    // ── Enemy: Grunt (18×26 canvas, 3 frames = 54×26) ──────────────────────
     {
       const fw = 18, fh = 26;
-      const c = this.textures.createCanvas('enemy_grunt', fw * 2, fh);
+      const c = this.textures.createCanvas('enemy_grunt', fw * 3, fh);
       const el = c!.getSourceImage() as HTMLCanvasElement;
       const ctx = el.getContext('2d')!;
       const px = (x: number, y: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
 
-      for (let f = 0; f < 2; f++) {
+      for (let f = 0; f < 3; f++) {
         const ox = f * fw;
         const bob = f === 1 ? 1 : 0;
         // Feet
@@ -896,19 +1096,42 @@ export class BootScene extends Phaser.Scene {
         ctx.beginPath(); ctx.arc(ox+9, bob+3, 4, 0, Math.PI*2); ctx.fill();
         // Claws
         px(ox+0, bob+15, '#1a1018'); px(ox+17, bob+15, '#1a1018');
+
+        // Frame 2: attack — weapon raised, arm lunging
+        if (f === 2) {
+          // Right arm raised overhead
+          for (let r = 0; r < 8; r++) { px(ox+16, bob+r, '#3a2a44'); px(ox+17, bob+r, '#3a2a44'); }
+          // Crude club / bone weapon
+          ctx.fillStyle = '#2a1a30';
+          ctx.fillRect(ox+13, bob+0, 4, 10); // shaft
+          ctx.fillStyle = '#3a2840';
+          ctx.fillRect(ox+11, bob+0, 7, 4); // head
+          ctx.fillStyle = '#4a3850'; ctx.fillRect(ox+11, bob+0, 7, 1); // highlight
+          // Impact glow (red aura at weapon head)
+          ctx.fillStyle = 'rgba(220,30,10,0.45)';
+          ctx.beginPath(); ctx.arc(ox+14, bob+2, 6, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,80,20,0.25)';
+          ctx.beginPath(); ctx.arc(ox+14, bob+2, 9, 0, Math.PI*2); ctx.fill();
+        }
       }
       c!.refresh();
+      {
+        const tex = this.textures.get('enemy_grunt');
+        tex.add('0', 0, 0,        0, fw, fh);
+        tex.add('1', 0, fw,       0, fw, fh);
+        tex.add('2', 0, fw * 2,   0, fw, fh);
+      }
     }
 
-    // ── Enemy: Shade (14×22 canvas, 2 frames = 28×22) ───────────────────────
+    // ── Enemy: Shade (14×22 canvas, 3 frames = 42×22) ───────────────────────
     {
       const fw = 14, fh = 22;
-      const c = this.textures.createCanvas('enemy_shade', fw * 2, fh);
+      const c = this.textures.createCanvas('enemy_shade', fw * 3, fh);
       const el = c!.getSourceImage() as HTMLCanvasElement;
       const ctx = el.getContext('2d')!;
       const px = (x: number, y: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
 
-      for (let f = 0; f < 2; f++) {
+      for (let f = 0; f < 3; f++) {
         const ox = f * fw;
         const bob = f === 1 ? 1 : 0;
         // Wispy tail / lower body
@@ -936,8 +1159,31 @@ export class BootScene extends Phaser.Scene {
         px(ox+6, bob+2, '#e0a0ff'); px(ox+7, bob+2, '#e0a0ff');
         ctx.fillStyle = 'rgba(160,80,255,0.25)';
         ctx.beginPath(); ctx.arc(ox+7, bob+2, 4, 0, Math.PI*2); ctx.fill();
+
+        // Frame 2: attack — lunging forward with claw glow
+        if (f === 2) {
+          // Arms extended fully forward/outward
+          for (let r = 3; r < 12; r++) { px(ox+0, bob+r, '#281048'); px(ox+13, bob+r, '#281048'); }
+          // Claw glow at tips
+          ctx.fillStyle = 'rgba(200,100,255,0.65)';
+          ctx.beginPath(); ctx.arc(ox+1, bob+8, 3, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(ox+12, bob+8, 3, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,160,255,0.4)';
+          ctx.beginPath(); ctx.arc(ox+1, bob+8, 5, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(ox+12, bob+8, 5, 0, Math.PI*2); ctx.fill();
+          // Intensified eye during attack
+          for (let cc = 6; cc < 9; cc++) px(ox+cc, bob+2, '#ff80ff');
+          ctx.fillStyle = 'rgba(200,80,255,0.5)';
+          ctx.beginPath(); ctx.arc(ox+7, bob+2, 5, 0, Math.PI*2); ctx.fill();
+        }
       }
       c!.refresh();
+      {
+        const tex = this.textures.get('enemy_shade');
+        tex.add('0', 0, 0,        0, fw, fh);
+        tex.add('1', 0, fw,       0, fw, fh);
+        tex.add('2', 0, fw * 2,   0, fw, fh);
+      }
     }
 
     // ── Ember pickup on ground (12×14) ──────────────────────────────────────
@@ -991,15 +1237,15 @@ export class BootScene extends Phaser.Scene {
       g.destroy();
     }
 
-    // ── Enemy: Boss / Void Wraith (26×40 canvas, 2 frames = 52×40) ──────────
+    // ── Enemy: Boss / Void Wraith (26×40 canvas, 3 frames = 78×40) ──────────
     {
       const fw = 26, fh = 40;
-      const c = this.textures.createCanvas('enemy_boss', fw * 2, fh);
+      const c = this.textures.createCanvas('enemy_boss', fw * 3, fh);
       const el = c!.getSourceImage() as HTMLCanvasElement;
       const ctx = el.getContext('2d')!;
       const px = (x: number, y: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
 
-      for (let f = 0; f < 2; f++) {
+      for (let f = 0; f < 3; f++) {
         const ox = f * fw;
         const bob = f === 1 ? 1 : 0;
         // Shadow
@@ -1049,14 +1295,42 @@ export class BootScene extends Phaser.Scene {
           px(ox + 0, bob + r, '#261840'); px(ox + 1, bob + r, '#261840'); px(ox + 2, bob + r, '#261840');
           px(ox + 23, bob + r, '#261840'); px(ox + 24, bob + r, '#261840'); px(ox + 25, bob + r, '#261840');
         }
-        // Sword (right)
+        // Sword (right) — default hanging position
         for (let r = 16; r < 33; r++) px(ox + 25, bob + r, '#9090b0');
         px(ox + 23, bob + 16, '#5050a0'); px(ox + 24, bob + 16, '#5050a0'); // crossguard
         // Dark aura
         ctx.fillStyle = 'rgba(80,20,140,0.14)';
         ctx.beginPath(); ctx.ellipse(ox + 13, bob + 18, 15, 22, 0, 0, Math.PI * 2); ctx.fill();
+
+        // Frame 2: attack — sword raised overhead, aura surging
+        if (f === 2) {
+          // Override sword: raised arm + blade pointing up
+          for (let r = 7; r < 20; r++) { // right arm raised
+            px(ox + 23, bob + r - 7, '#261840'); px(ox + 24, bob + r - 7, '#261840'); px(ox + 25, bob + r - 7, '#261840');
+          }
+          for (let r = 0; r < 18; r++) px(ox + 25, bob + r, '#a0a0c0'); // blade upward
+          px(ox + 22, bob + 7, '#5050a0'); px(ox + 23, bob + 7, '#5050a0'); px(ox + 24, bob + 7, '#5050a0'); // guard
+          px(ox + 25, bob + 0, '#d0d0ff'); px(ox + 25, bob + 1, '#d0d0ff'); // blade tip glint
+          // Surging dark aura
+          ctx.fillStyle = 'rgba(120,30,200,0.35)';
+          ctx.beginPath(); ctx.ellipse(ox + 13, bob + 18, 18, 26, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(180,60,255,0.2)';
+          ctx.beginPath(); ctx.ellipse(ox + 13, bob + 18, 22, 30, 0, 0, Math.PI * 2); ctx.fill();
+          // Eyes blaze brighter
+          for (let cc = 9; cc < 13; cc++) px(ox + cc, bob + 4, '#ff60ff');
+          for (let cc = 14; cc < 18; cc++) px(ox + cc, bob + 4, '#ff60ff');
+          ctx.fillStyle = 'rgba(255,100,255,0.55)';
+          ctx.beginPath(); ctx.arc(ox + 10.5, bob + 4, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(ox + 15.5, bob + 4, 4, 0, Math.PI * 2); ctx.fill();
+        }
       }
       c!.refresh();
+      {
+        const tex = this.textures.get('enemy_boss');
+        tex.add('0', 0, 0,        0, fw, fh);
+        tex.add('1', 0, fw,       0, fw, fh);
+        tex.add('2', 0, fw * 2,   0, fw, fh);
+      }
     }
 
     // ── Chest open (22×18) ─────────────────────────────────────────────────

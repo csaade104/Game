@@ -294,15 +294,15 @@ export class HubScene extends Phaser.Scene {
   private buildNPCs() {
     for (const def of NPCS) {
       const s = this.isoToScene(def.col, def.row);
-      const sprite = this.add.image(s.x, s.y - 12, def.key, 0)
-        .setScale(1.4).setDepth(depthOf(def.col, def.row) + 20);
+      const sprite = this.add.image(s.x, s.y - 20, def.key, '0')
+        .setScale(1.6).setDepth(depthOf(def.col, def.row) + 20);
 
-      this.tweens.add({ targets: sprite, y: s.y - 16, duration: 1600 + Math.random()*500, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      this.tweens.add({ targets: sprite, y: s.y - 24, duration: 1600 + Math.random()*500, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
       this.time.addEvent({ delay: 850 + Math.random()*300, loop: true, callback: () => {
-        sprite.setFrame(Number(sprite.frame.name) === 0 ? 1 : 0);
+        sprite.setFrame(sprite.frame.name === '0' ? '1' : '0');
       }});
 
-      this.add.text(s.x, s.y - 34, def.name, {
+      this.add.text(s.x, s.y - 56, def.name, {
         fontFamily: 'monospace', fontSize: '8px', color: '#d0b898',
         backgroundColor: '#0a0608cc', padding: { x: 4, y: 2 },
       }).setOrigin(0.5).setDepth(depthOf(def.col, def.row) + 21);

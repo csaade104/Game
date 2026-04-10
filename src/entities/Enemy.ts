@@ -113,6 +113,8 @@ export class Enemy {
       case 'idle':
         if (dist < this.sightRange) {
           this.state = 'chase';
+        } else if (this.sprite.frame.name !== '0') {
+          this.sprite.setFrame('0');
         }
         break;
 
@@ -170,7 +172,9 @@ export class Enemy {
       }
 
       case 'attack':
+        this.sprite.setFrame('2'); // attack pose
         if (this.stateTimer <= 0) {
+          this.sprite.setFrame('0'); // return to idle
           this.state = 'chase';
           this.attackTimer = this.attackCooldown;
           const reach = this.type === 'boss' ? 0.8 : 0.4;
