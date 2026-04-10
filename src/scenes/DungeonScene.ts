@@ -169,9 +169,12 @@ export class DungeonScene extends Phaser.Scene {
 
   // ── Ground render texture ──────────────────────────────────────────────────
   private buildGround() {
-    const rtW = this.mapW + TILE_W * 2;
-    const rtH = this.mapH + TILE_H * 4;
-    this.groundRT = this.add.renderTexture(this.mapOX - TILE_W, this.mapOY, rtW, rtH)
+    const drawOX = DROWS * TILE_HALF_W;              // 1024
+    const rtX    = this.mapOX - drawOX;              // -2016
+    const rtW    = this.mapW  + drawOX + TILE_W;     // 3136
+    const rtH    = this.mapH  + TILE_H * 4;
+
+    this.groundRT = this.add.renderTexture(rtX, this.mapOY, rtW, rtH)
       .setOrigin(0, 0).setDepth(DEPTH.GROUND);
 
     for (let row = 0; row < DROWS; row++) {
@@ -179,11 +182,10 @@ export class DungeonScene extends Phaser.Scene {
         const t = this.dungeonMap[row]?.[col] ?? DT.VOID;
         if (t === DT.VOID || t === DT.WALL) continue;
         const s = gridToScreen(col, row);
-        const tx = s.x + TILE_W, ty = s.y;
         let key = 'tile_dungeon_floor';
         if (t === DT.EMBER_FLOOR) key = 'tile_dungeon_ember';
         else if (t === DT.EXIT) key = 'tile_dungeon_exit';
-        this.groundRT.draw(key, tx, ty);
+        this.groundRT.draw(key, s.x + drawOX - TILE_HALF_W, s.y);
       }
     }
   }

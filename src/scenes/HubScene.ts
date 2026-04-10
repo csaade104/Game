@@ -189,9 +189,14 @@ export class HubScene extends Phaser.Scene {
 
   // ── Ground ──────────────────────────────────────────────────────────────────
   private buildGround() {
-    const rtW = this.mapW + TILE_W * 2;
-    const rtH = this.mapH + TILE_H * 4;
-    this.groundRT = this.add.renderTexture(this.mapOX - TILE_W, this.mapOY, rtW, rtH)
+    // drawOX shifts all tile local coords right so leftmost tiles (s.x as low as
+    // -(HUB_ROWS-1)*TILE_HALF_W = -928) still get a non-negative tx inside the RT.
+    const drawOX = HUB_ROWS * TILE_HALF_W;           // 960
+    const rtX    = this.mapOX - drawOX;              // -1888
+    const rtW    = this.mapW  + drawOX + TILE_W;     // 2944
+    const rtH    = this.mapH  + TILE_H * 4;          // 1088
+
+    this.groundRT = this.add.renderTexture(rtX, this.mapOY, rtW, rtH)
       .setOrigin(0, 0).setDepth(DEPTH.GROUND);
 
     for (let row = 0; row < HUB_ROWS; row++) {
@@ -199,9 +204,8 @@ export class HubScene extends Phaser.Scene {
         const id = MAP[row]?.[col] ?? 0;
         if (id === T.VOID) continue;
         const s = gridToScreen(col, row);
-        const tx = s.x + TILE_W;
-        const ty = s.y;
-        this.groundRT.draw(this.tileKey(id), tx, ty);
+        // tx positions tile left-edge correctly: rtX + tx = s.x + mapOX - TILE_HALF_W
+        this.groundRT.draw(this.tileKey(id), s.x + drawOX - TILE_HALF_W, s.y);
       }
     }
   }
