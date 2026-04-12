@@ -22,11 +22,17 @@ export class BootScene extends Phaser.Scene {
 
   // ── Isometric building generator ─────────────────────────────────────────
   private makeBuilding(key: string, W: number, D: number, H: number, opts: {
-    leftCol: number; rightCol: number; roofCol: number;
-    winCol: number; stories: number;
+    wallCol: number;           // SW wall brick colour
+    mortarCol?: number;        // mortar / grout (auto-darkened from wallCol)
+    wallStyle?: 'stone'|'plank'|'halfTimber';
+    brickW?: number;           // brick width px (default 14)
+    brickH?: number;           // brick height px (default 7)
+    roofCol: number;
     roofTrim?: number;
-    wallTile: [number, number]; // [col, row] in roguelike sheet (rows 25-29)
-    peakH?: number;             // roof peak height override
+    roofStyle?: 'clay'|'slate'|'thatch';
+    peakH?: number;
+    winCol: number;
+    stories?: number;
     detail?: (ctx: CanvasRenderingContext2D, c: Record<string,{x:number,y:number}>) => void;
   }) {
     const TW = 32, TH = 16;
