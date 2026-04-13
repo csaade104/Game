@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 520" width="400" height="520">
+  <title>Year 12 Graduation Gown</title>
+
+  <!-- Background -->
+  <rect width="400" height="520" fill="#f5f0eb" rx="16"/>
+
+  <!-- ── Mortarboard cap ── -->
+  <!-- Cap top (flat square, slightly rotated) -->
+  <polygon points="200,38 310,75 200,112 90,75" fill="#1a1a2e" stroke="#0d0d1a" stroke-width="2"/>
+  <!-- Cap band -->
+  <rect x="170" y="100" width="60" height="18" rx="3" fill="#1a1a2e"/>
+  <!-- Tassel string -->
+  <line x1="310" y1="75" x2="318" y2="140" stroke="#c8a84b" stroke-width="2.5"/>
+  <!-- Tassel bunch -->
+  <line x1="318" y1="140" x2="312" y2="170" stroke="#c8a84b" stroke-width="2"/>
+  <line x1="318" y1="140" x2="318" y2="172" stroke="#c8a84b" stroke-width="2"/>
+  <line x1="318" y1="140" x2="324" y2="170" stroke="#c8a84b" stroke-width="2"/>
+  <circle cx="318" cy="140" r="4" fill="#c8a84b"/>
+
+  <!-- ── Head ── -->
+  <ellipse cx="200" cy="150" rx="38" ry="42" fill="#f5c5a3"/>
+  <!-- Hair (peeking under cap) -->
+  <ellipse cx="200" cy="122" rx="38" ry="14" fill="#3b2314"/>
+
+  <!-- ── Neck ── -->
+  <rect x="187" y="188" width="26" height="20" rx="4" fill="#f5c5a3"/>
+
+  <!-- ── Hood / collar accent ── -->
+  <path d="M148,205 Q200,220 252,205 L258,230 Q200,248 142,230 Z" fill="#c8a84b" opacity="0.9"/>
+  <path d="M155,228 Q200,244 245,228 L248,245 Q200,260 152,245 Z" fill="#8b1a1a" opacity="0.85"/>
+
+  <!-- ── Gown body ── -->
+  <path d="
+    M155,205
+    L110,480
+    Q200,500 290,480
+    L245,205
+    Q200,215 155,205 Z
+  " fill="#1a1a2e"/>
+
+  <!-- Gown centre pleat -->
+  <line x1="200" y1="225" x2="200" y2="490" stroke="#2d2d4e" stroke-width="3" opacity="0.7"/>
+
+  <!-- ── Left sleeve ── -->
+  <path d="
+    M155,205
+    L80,260
+    Q58,300 62,330
+    L105,320
+    Q118,295 148,270
+    L155,255 Z
+  " fill="#1a1a2e"/>
+  <!-- Left sleeve opening -->
+  <path d="M62,330 Q58,348 72,352 L105,340 Q108,328 105,320 Z" fill="#2d2d4e"/>
+
+  <!-- ── Right sleeve ── -->
+  <path d="
+    M245,205
+    L320,260
+    Q342,300 338,330
+    L295,320
+    Q282,295 252,270
+    L245,255 Z
+  " fill="#1a1a2e"/>
+  <!-- Right sleeve opening -->
+  <path d="M338,330 Q342,348 328,352 L295,340 Q292,328 295,320 Z" fill="#2d2d4e"/>
+
+  <!-- ── Year 12 text banner ── -->
+  <rect x="120" y="358" width="160" height="36" rx="8" fill="#c8a84b"/>
+  <text x="200" y="382" font-family="Georgia, serif" font-size="18" font-weight="bold"
+        text-anchor="middle" fill="#1a1a2e" letter-spacing="2">YEAR 12</text>
+
+  <!-- ── Diploma scroll ── -->
+  <rect x="168" y="400" width="64" height="44" rx="6" fill="#fffdf5" stroke="#c8a84b" stroke-width="2"/>
+  <rect x="162" y="400" width="10" height="44" rx="5" fill="#e8d5a3"/>
+  <rect x="228" y="400" width="10" height="44" rx="5" fill="#e8d5a3"/>
+  <line x1="178" y1="416" x2="222" y2="416" stroke="#c8a84b" stroke-width="1.5"/>
+  <line x1="178" y1="424" x2="222" y2="424" stroke="#c8a84b" stroke-width="1.5"/>
+  <line x1="178" y1="432" x2="210" y2="432" stroke="#c8a84b" stroke-width="1.5"/>
+
+  <!-- ── Stars decoration ── -->
+  <text x="80" y="350" font-size="18" fill="#c8a84b" opacity="0.7">★</text>
+  <text x="300" y="350" font-size="18" fill="#c8a84b" opacity="0.7">★</text>
+  <text x="60" y="280" font-size="12" fill="#c8a84b" opacity="0.5">✦</text>
+  <text x="328" y="280" font-size="12" fill="#c8a84b" opacity="0.5">✦</text>
+
+  <!-- ── Caption ── -->
+  <text x="200" y="508" font-family="Georgia, serif" font-size="13" font-style="italic"
+        text-anchor="middle" fill="#555" letter-spacing="1">Congratulations, Class of 2026</text>
+</svg>
