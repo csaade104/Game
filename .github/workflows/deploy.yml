@@ -2,7 +2,7 @@ name: Deploy EMBERHOLD to GitHub Pages
 
 on:
   push:
-    branches: [claude/emberhold-phaser-setup-IBKDj, main]
+    branches: [claude/emberhold-phaser-setup-IBKDj, main, claude/open-svg-mobile-WRs99]
   workflow_dispatch:
 
 permissions:
@@ -26,7 +26,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build
+        run: npx vite build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
